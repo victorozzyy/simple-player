@@ -1,140 +1,409 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Filtro de Lista M3U8</title>
+<meta charset="utf-8" />
+<title>Filtro M3U8 — Painel Completo</title>
 <style>
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: black;
+  :root {
+    --bg: #000;
+    --card: #2b2b2b;
+    --muted: #b0b0b0;
+    --primary: #10a37f;
+    --primary-hover: #0e8f6f;
+    --accent: #fff;
+    --radius: 10px;
+    --shadow: 0 8px 24px rgba(15,23,42,0.1);
+    --mono: 'Segoe UI', Roboto, Arial, Helvetica, sans-serif;
+  }
+
+  html,body {
+    height: 100%;
     margin: 0;
-    padding: 0;
-    color: #1e1e1e;
+    background: var(--bg);
+    font-family: var(--mono);
+    color: var(--accent);
   }
-  .container {
-    max-width: 900px;
-    margin: auto;
-    background: gray;
-    padding: 25px;
-    margin-top: 40px;
-    margin-bottom: 40px;
-    border-radius: 10px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+
+  .wrap {
+    width: 920px;
+    margin: 48px auto;
   }
-  h2 { text-align: center; }
-  label { margin-top: 15px; display: block; font-weight: bold; }
-  input[type="text"], input[type="file"] {
-    width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ccc; border-radius: 6px;
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px;
+    box-sizing: border-box;
   }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .title {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0ea37f, #0b8b6d);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(14,139,111,0.18);
+  }
+
+  h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+
+  p.lead {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .panel {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 14px;
+    border: 1px solid #333;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="file"] {
+    display: block;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #111;
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
   button {
-    margin-top: 12px; padding: 12px 18px; cursor: pointer; border: none;
-    background: #10a37f; color: white; border-radius: 6px; transition: 0.3s;
+    background: var(--primary);
+    color: white;
+    border: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 6px 14px rgba(16,163,127,0.12);
   }
-  button:hover { background: #0e8f6f; }
-  textarea {
-    width: 100%; height: 250px; margin-top: 15px; padding: 10px;
-    border-radius: 6px; border: 1px solid #bbb; resize: vertical;
+
+  button:hover {
+    background: var(--primary-hover);
   }
-  .category-list {
-    background: #f7f7f7;
-    padding: 12px;
-    border-radius: 6px;
-    max-height: 220px;
-    overflow-y: auto;
+
+  button.ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid #444;
+    box-shadow: none;
+  }
+
+  textarea#output {
+    width: 100%;
+    height: 420px;
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #111;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
     margin-top: 12px;
-    border: 1px solid #ddd;
+  }
+
+  .category-list {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px dashed #444;
+    background: #111;
+    max-height: 150px;
+    overflow: auto;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .category-list label {
+    display: block;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .progress {
+    flex: 1;
+    height: 10px;
+    background: #333;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid #444;
+  }
+
+  .progress > i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #10a37f, #7ad9bb);
+    width: 0%;
+  }
+
+  footer {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 13px;
   }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <div class="title">
+        <div class="logo">M3</div>
+        <div>
+          <h1>Filtro M3U8 — Painel Completo</h1>
+          <p class="lead">Filtrar por palavras e categorias • Processamento em chunks</p>
+        </div>
+      </div>
+    </header>
 
-<div class="container">
-  <h2>🔎 Filtro de Lista M3U/M3U8</h2>
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <label>1️⃣ Selecione o arquivo (.m3u ou .m3u8)</label>
+          <input id="fileInput" type="file" accept=".m3u,.m3u8">
 
-  <label>📂 Carregar Lista M3U/M3U8</label>
-  <input type="file" id="fileInput" accept=".m3u,.m3u8">
+          <label style="margin-top:10px">2️⃣ Palavras-chave (separadas por vírgula)</label>
+          <input id="keywords" type="text" placeholder="Ex: filmes, esportes, infantil">
 
-  <label>🔑 Palavras-chave (separe com vírgulas):</label>
-  <input type="text" id="keywords" placeholder="Ex: esportes, filmes, notícias">
+          <div class="actions">
+            <button id="includeBtn">🎯 Filtrar (Incluir)</button>
+            <button id="excludeBtn">❌ Filtrar (Excluir)</button>
+            <button id="excludeCatsBtn" class="ghost">🗂️ Excluir Categorias Selecionadas</button>
+            <button id="downloadBtn" class="ghost">⬇️ Baixar</button>
+            <button id="copyBtn" class="ghost">📋 Copiar</button>
+          </div>
 
-  <button onclick="processFile()">Filtrar Canais 🎯</button>
-  <button onclick="showCategories()">📚 Mostrar Categorias</button>
-  <button onclick="downloadTxt()">⬇️ Baixar Resultado TXT</button>
-  <button onclick="copyResult()">📋 Copiar Resultado</button>
+          <div class="progress-wrap">
+            <div class="progress"><i id="progressBar"></i></div>
+            <div style="width:78px;text-align:right;font-size:13px;color:var(--muted)" id="progressPct">0%</div>
+          </div>
 
-  <div id="categories" class="category-list" style="display:none;"></div>
+          <div style="margin-top:8px;font-size:13px;color:var(--muted);">
+            Processados: <span id="processedBytes">0</span> bytes | Canais: <span id="foundCount">0</span>
+          </div>
+        </div>
 
-  <h3>📜 Resultado</h3>
-  <textarea id="output" readonly></textarea>
+        <h3 style="margin:12px 0 8px 0;">Resultado</h3>
+        <textarea id="output" readonly placeholder="O resultado aparecerá aqui..."></textarea>
+        <div id="categoriesBox" class="category-list" style="display:none;"></div>
+      </div>
+
+      <aside>
+        <div style="background:#111;padding:12px;border-radius:8px;border:1px solid #333;text-align:center;">
+          <div style="font-size:14px;color:var(--muted);">Tempo estimado</div>
+          <div style="font-size:18px;font-weight:700;margin-top:6px" id="timeEst">—</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div>Processamento local — 100% privado</div>
+      <div id="statusMsg">Pronto</div>
+    </footer>
+  </div>
 </div>
 
 <script>
-let fileContent = "";
+const fileInput = document.getElementById("fileInput");
+const includeBtn = document.getElementById("includeBtn");
+const excludeBtn = document.getElementById("excludeBtn");
+const excludeCatsBtn = document.getElementById("excludeCatsBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const copyBtn = document.getElementById("copyBtn");
+const outputEl = document.getElementById("output");
+const progressBar = document.getElementById("progressBar");
+const progressPct = document.getElementById("progressPct");
+const processedBytesEl = document.getElementById("processedBytes");
+const foundCountEl = document.getElementById("foundCount");
+const categoriesBox = document.getElementById("categoriesBox");
+const statusMsg = document.getElementById("statusMsg");
+const timeEstEl = document.getElementById("timeEst");
 
-// Carregar arquivo
-document.getElementById('fileInput').addEventListener('change', function(event) {
-  const reader = new FileReader();
-  reader.onload = e => fileContent = e.target.result;
-  reader.readAsText(event.target.files[0]);
+let lastResults = [];
+let lastCategories = new Set();
+
+function resetUI() {
+  outputEl.value = "";
+  progressBar.style.width = "0%";
+  progressPct.textContent = "0%";
+  processedBytesEl.textContent = "0";
+  foundCountEl.textContent = "0";
+  categoriesBox.innerHTML = "";
+  categoriesBox.style.display = "none";
+  statusMsg.textContent = "Pronto";
+  timeEstEl.textContent = "—";
+}
+
+includeBtn.addEventListener("click", () => handleFilter("include"));
+excludeBtn.addEventListener("click", () => handleFilter("exclude"));
+excludeCatsBtn.addEventListener("click", handleCategoryExclusion);
+
+downloadBtn.addEventListener("click", () => {
+  if (!outputEl.value) return alert("Nada para baixar.");
+  const blob = new Blob([outputEl.value], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "playlist_filtrada.m3u";
+  a.click();
 });
 
-// Filtrar canais e remover duplicados
-function processFile() {
-  if (!fileContent) return alert("⚠️ Selecione uma lista primeiro!");
-  const keywords = document.getElementById('keywords').value.toLowerCase().split(',').map(k => k.trim());
-  const lines = fileContent.split("\n");
-  const uniqueLinks = new Set();
-  let result = "";
+copyBtn.addEventListener("click", async () => {
+  if (!outputEl.value) return alert("Nada para copiar.");
+  await navigator.clipboard.writeText(outputEl.value);
+  alert("✅ Copiado!");
+});
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].toLowerCase();
-    if (line.includes("#extinf")) {
-      const url = lines[i + 1]?.trim();
-      if (url && !uniqueLinks.has(url) && keywords.some(k => k && line.includes(k))) {
-        uniqueLinks.add(url);
-        result += lines[i] + "\n" + url + "\n";
+async function handleFilter(mode) {
+  resetUI();
+  const file = fileInput.files[0];
+  if (!file) return alert("Selecione um arquivo primeiro.");
+  await processM3U(file, mode);
+}
+
+async function processM3U(file, mode) {
+  const start = performance.now();
+  const text = await file.text();
+  const lines = text.split(/\r?\n/);
+  const results = [];
+  const unique = new Set();
+  const cats = new Set();
+  const keywordsRaw = document.getElementById("keywords").value.trim();
+  const keywords = keywordsRaw ? keywordsRaw.toLowerCase().split(",").map(s=>s.trim()).filter(Boolean) : [];
+  let prev = null;
+  let count = 0;
+
+  for (let i=0;i<lines.length;i++){
+    const l = lines[i];
+    if (/group-title\s*=\s*"/i.test(l)) {
+      const m = /group-title\s*=\s*"([^"]+)"/i.exec(l);
+      if (m && m[1]) cats.add(m[1]);
+    }
+    if (/^#EXTINF/i.test(l)) {
+      prev = l;
+      continue;
+    }
+    if (prev && l && !l.startsWith("#")) {
+      const keep = filterDecision(prev, keywords, mode);
+      if (keep && !unique.has(l)) {
+        unique.add(l);
+        results.push(prev, l);
+        count++;
       }
+      prev = null;
     }
   }
 
-  document.getElementById('output').value = result || "Nenhum canal encontrado.";
+  timeEstEl.textContent = ((performance.now() - start)/1000).toFixed(1) + "s";
+  foundCountEl.textContent = count;
+  outputEl.value = results.join("\n") || "Nenhum resultado encontrado.";
+  progressBar.style.width = "100%";
+  progressPct.textContent = "100%";
+  processedBytesEl.textContent = file.size.toLocaleString();
+  statusMsg.textContent = `Concluído — ${count} canais mantidos.`;
+
+  if (cats.size > 0) showCategories(cats);
+  lastResults = results;
+  lastCategories = cats;
 }
 
-// Mostrar categorias
-function showCategories() {
-  if (!fileContent) return alert("⚠️ Carregue uma lista primeiro.");
-  const regex = /group-title="([^"]+)"/g;
-  let match, groups = new Set();
+function filterDecision(line, keywords, mode) {
+  if (!keywords.length) return true;
+  const lower = line.toLowerCase();
+  const hasKey = keywords.some(k => lower.includes(k));
+  return mode === "include" ? hasKey : !hasKey;
+}
 
-  while ((match = regex.exec(fileContent)) !== null) {
-    groups.add(match[1]);
+function showCategories(cats) {
+  categoriesBox.innerHTML = "<strong>Categorias detectadas:</strong><br><br>";
+  cats.forEach(cat=>{
+    const id = "cat_" + btoa(cat).replace(/=/g,"");
+    categoriesBox.innerHTML += `<label><input type="checkbox" value="${cat}" id="${id}"> ${cat}</label>`;
+  });
+  categoriesBox.style.display = "block";
+}
+
+function handleCategoryExclusion() {
+  if (!lastResults.length) return alert("Primeiro gere uma lista filtrada.");
+  const checked = [...categoriesBox.querySelectorAll("input[type=checkbox]:checked")].map(el=>el.value);
+  if (!checked.length) return alert("Selecione ao menos uma categoria.");
+  const filtered = [];
+  let prev = null;
+  for (const line of lastResults) {
+    if (/^#EXTINF/i.test(line)) {
+      prev = line;
+      continue;
+    }
+    if (prev && !checked.some(cat => prev.includes(`group-title="${cat}"`))) {
+      filtered.push(prev, line);
+    }
+    prev = null;
   }
-
-  document.getElementById('categories').innerHTML =
-    "<b>Categorias encontradas:</b><br><br>✅ " + [...groups].join("<br>✅ ");
-  document.getElementById('categories').style.display = "block";
-}
-
-// Baixar resultado
-function downloadTxt() {
-  const text = document.getElementById('output').value;
-  if (!text) return alert("⚠️ Nada para baixar.");
-  const blob = new Blob([text], { type: "text/plain" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "resultado.txt";
-  link.click();
-}
-
-// Copiar resultado
-function copyResult() {
-  const output = document.getElementById('output');
-  if (!output.value) return alert("⚠️ Nada para copiar.");
-  output.select();
-  document.execCommand("copy");
-  alert("✅ Copiado para a área de transferência!");
+  outputEl.value = filtered.join("\n") || "Todos os canais dessas categorias foram removidos.";
+  statusMsg.textContent = `Categorias removidas: ${checked.join(", ")}`;
 }
 </script>
-
 </body>
 </html>
