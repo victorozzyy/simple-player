@@ -214,7 +214,7 @@
         <div class="logo">M3</div>
         <div>
           <h1>Filtro M3U8 — Painel Completo</h1>
-          <p class="lead">Filtrar por palavras e categorias • Processamento em chunks</p>
+          <p class="lead">Filtrar por palavras e categorias • Processamento local</p>
         </div>
       </div>
     </header>
@@ -231,6 +231,7 @@
           <div class="actions">
             <button id="includeBtn">🎯 Filtrar (Incluir)</button>
             <button id="excludeBtn">❌ Filtrar (Excluir)</button>
+            <button id="showCatsBtn" class="ghost">📚 Mostrar Categorias</button>
             <button id="excludeCatsBtn" class="ghost">🗂️ Excluir Categorias Selecionadas</button>
             <button id="downloadBtn" class="ghost">⬇️ Baixar</button>
             <button id="copyBtn" class="ghost">📋 Copiar</button>
@@ -271,6 +272,7 @@ const fileInput = document.getElementById("fileInput");
 const includeBtn = document.getElementById("includeBtn");
 const excludeBtn = document.getElementById("excludeBtn");
 const excludeCatsBtn = document.getElementById("excludeCatsBtn");
+const showCatsBtn = document.getElementById("showCatsBtn");
 const downloadBtn = document.getElementById("downloadBtn");
 const copyBtn = document.getElementById("copyBtn");
 const outputEl = document.getElementById("output");
@@ -300,6 +302,7 @@ function resetUI() {
 includeBtn.addEventListener("click", () => handleFilter("include"));
 excludeBtn.addEventListener("click", () => handleFilter("exclude"));
 excludeCatsBtn.addEventListener("click", handleCategoryExclusion);
+showCatsBtn.addEventListener("click", handleShowCategories);
 
 downloadBtn.addEventListener("click", () => {
   if (!outputEl.value) return alert("Nada para baixar.");
@@ -364,9 +367,9 @@ async function processM3U(file, mode) {
   processedBytesEl.textContent = file.size.toLocaleString();
   statusMsg.textContent = `Concluído — ${count} canais mantidos.`;
 
-  if (cats.size > 0) showCategories(cats);
   lastResults = results;
   lastCategories = cats;
+  if (cats.size > 0) showCategories(cats);
 }
 
 function filterDecision(line, keywords, mode) {
@@ -377,13 +380,23 @@ function filterDecision(line, keywords, mode) {
 }
 
 function showCategories(cats) {
+  // Função auxiliar para codificar unicode em base64 de forma segura
+  function safeBase64(str) {
+    try {
+      return btoa(unescape(encodeURIComponent(str)));
+    } catch {
+      return Math.random().toString(36).substring(2,10);
+    }
+  }
+
   categoriesBox.innerHTML = "<strong>Categorias detectadas:</strong><br><br>";
-  cats.forEach(cat=>{
-    const id = "cat_" + btoa(cat).replace(/=/g,"");
+  cats.forEach(cat => {
+    const id = "cat_" + safeBase64(cat);
     categoriesBox.innerHTML += `<label><input type="checkbox" value="${cat}" id="${id}"> ${cat}</label>`;
   });
   categoriesBox.style.display = "block";
 }
+
 
 function handleCategoryExclusion() {
   if (!lastResults.length) return alert("Primeiro gere uma lista filtrada.");
@@ -396,13 +409,28 @@ function handleCategoryExclusion() {
       prev = line;
       continue;
     }
-    if (prev && !checked.some(cat => prev.includes(`group-title="${cat}"`))) {
+    if (prev && !checked.some(cat => prev.includes(`group-title=\"${cat}\"`))) {
       filtered.push(prev, line);
     }
     prev = null;
   }
   outputEl.value = filtered.join("\n") || "Todos os canais dessas categorias foram removidos.";
   statusMsg.textContent = `Categorias removidas: ${checked.join(", ")}`;
+}
+
+async function handleShowCategories() {
+  const file = fileInput.files[0];
+  if (!file) return alert("Selecione um arquivo primeiro.");
+  const text = await file.text();
+  const cats = new Set();
+  const lines = text.split(/\r?\n/);
+  for (const l of lines) {
+    const m = /group-title\s*=\s*"([^"]+)"/i.exec(l);
+    if (m && m[1]) cats.add(m[1]);
+  }
+  lastCategories = cats;
+  showCategories(cats);
+  statusMsg.textContent = `${cats.size} categorias detectadas.`;
 }
 </script>
 </body>
