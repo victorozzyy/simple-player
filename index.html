@@ -242,13 +242,29 @@ function safeBase64(str) {
 }
 
 function showCategories(cats) {
-  categoriesBox.innerHTML = "<strong>Categorias detectadas:</strong><br><br>";
-  cats.forEach(cat=>{
+  categoriesBox.innerHTML = `
+    <strong>Categorias detectadas:</strong>
+    <button id="toggleAllCats" class="ghost" style="margin-left:10px;font-size:12px;padding:4px 8px;border-radius:6px;">Selecionar todas</button>
+    <br><br>
+  `;
+
+  cats.forEach(cat => {
     const id = "cat_" + safeBase64(cat);
     categoriesBox.innerHTML += `<label><input type="checkbox" value="${cat}" id="${id}"> ${cat}</label>`;
   });
+
   categoriesBox.style.display = "block";
+
+  // Botão de selecionar/desmarcar todas
+  const toggleBtn = document.getElementById("toggleAllCats");
+  toggleBtn.addEventListener("click", () => {
+    const boxes = categoriesBox.querySelectorAll("input[type=checkbox]");
+    const allChecked = [...boxes].every(b => b.checked);
+    boxes.forEach(b => b.checked = !allChecked);
+    toggleBtn.textContent = allChecked ? "Selecionar todas" : "Desmarcar todas";
+  });
 }
+
 
 async function handleShowCategories() {
   const file = fileInput.files[0];
