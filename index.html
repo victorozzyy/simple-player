@@ -5,23 +5,17 @@
   <title>M3U8 Player</title>
   <link rel="stylesheet" href="css/stylem3u8.css">
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest" defer></script>
-  <script
-  src="js/m3u8.js" defer>
-  </script>
+  <script src="js/m3u8.js" defer></script>
 </head>
 <body>
   <h2>🎬 M3U8 Player</h2>
 
   <div class="section" style="display:flex; flex-wrap: wrap; gap: 10px;">
-    
     <button class="navigable" id="btnLoadPlaylist" tabindex="0">📡 Playlists Remotas</button>
     <button class="navigable" id="btnMinhasListas" tabindex="0">📥 Minhas Listas</button>
-    
     <button class="navigable" id="btnUrl" tabindex="0">🌐 Playlist por URL</button>
-    
-	<button id="btnUpload" class="navigable">📁 Upload</button>
-<input type="file" id="fileInput" accept=".m3u,.m3u8" style="display:none;">
-
+    <button id="btnUpload" class="navigable">📁 Upload</button>
+    <input type="file" id="fileInput" accept=".m3u,.m3u8" style="display:none;">
   </div>
 
   <!-- Lista de playlists remotas disponíveis -->
@@ -45,11 +39,62 @@
 
   <div id="messageArea"></div>
 
+  <!-- Player antigo (não usado mais, mas mantido por compatibilidade) -->
   <video controls id="player" tabindex="-1"
          style="display:none; position:fixed; top:0; left:0;
                 width:100vw; height:100vh; z-index:9999;
                 background-color:black;"></video>
 
-  
+  <!-- 🆕 Overlay Player -->
+  <div id="playerOverlayModal" style="display:none;
+       position:fixed; inset:0; background:rgba(0,0,0,0.85);
+       align-items:center; justify-content:center;
+       z-index:2000; padding:20px; box-sizing:border-box;">
+    <div id="playerOverlayContainer" style="width:100%; max-width:1200px; height:80%;
+         background:#000; border-radius:8px; overflow:hidden;
+         position:relative; box-shadow:0 10px 40px rgba(0,0,0,0.7);">
+      <button id="playerOverlayClose" title="Fechar player" style="
+          position:absolute; right:8px; top:8px; z-index:2010;
+          background:#ff4444; color:white; border:none;
+          padding:6px 10px; border-radius:6px; cursor:pointer; font-size:16px;">✕</button>
+      <iframe id="playerOverlayIframe" allow="autoplay; fullscreen"
+          style="width:100%; height:100%; border:0; background:#000;"></iframe>
+    </div>
+  </div>
+
+  <script>
+  // 🔄 Intercepta o openChannelInPlayer para abrir no overlay (iframe modal)
+  function openChannelInPlayer(url, name, index) {
+    try {
+      const overlay = document.getElementById("playerOverlayModal");
+      const iframe = document.getElementById("playerOverlayIframe");
+      const closeBtn = document.getElementById("playerOverlayClose");
+
+      // mostrar overlay
+      overlay.style.display = "flex";
+      // configurar src
+      iframe.src = `player.html?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&index=${index}`;
+
+      // enviar postMessage após carregar
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow.postMessage({ action: "play", url, name, channelIndex: index }, "*");
+        } catch (e) { console.warn("postMessage iframe:", e); }
+      };
+
+      closeBtn.onclick = () => {
+        iframe.src = "about:blank";
+        overlay.style.display = "none";
+      };
+
+      console.log("🎥 Abrindo canal no overlay:", name);
+    } catch (err) {
+      console.error("Erro ao abrir overlay:", err);
+      // fallback: abrir em nova aba
+      window.open(`player.html?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&index=${index}`, "_blank");
+    }
+  }
+  </script>
+
 </body>
 </html>
