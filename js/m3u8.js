@@ -1634,6 +1634,11 @@ if (savedState.name) {
         description: "Lista fixa configurada no código",
         url: "http://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
       }
+	  {
+        name: "📥 Minha 02",
+        description: "Lista fixa configurada no código",
+        url: "http://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
+      }
 	  
 	  {
         name: "📥 Minha Lista Principal",
