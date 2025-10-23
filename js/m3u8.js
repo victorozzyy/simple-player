@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Helper: trata tecla OK/Enter de controles remotos (Tizen, WebOS, etc.)
     function isOKKey(e) {
-        // valores comuns em TVs: 'Enter', 'OK', 'Select', 'NumpadEnter', keyCode 13, 65376
         return e && (
             e.key === "Enter" ||
             e.key === "NumpadEnter" ||
@@ -13,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
             e.keyCode === 65376
         );
     }
+    
     const video = document.getElementById("player");
     const channelList = document.getElementById("channelList");
     const playlistSelector = document.getElementById("playlistSelector");
@@ -33,7 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentView = 'buttons';
     let overlayChannels = [];
     let overlayFocusIndex = 0;
-let restoringState = false; // evita que updateChannelList roube o foco durante restauração
+    let restoringState = false;
+    let hls = null; // Instância HLS.js
+    let currentChannelIndex = -1;
 
     // Lista de playlists remotas
     const remotePlaylistsConfig = [
@@ -53,14 +55,13 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u",
         category: "Filmes e Series"
       },
-	  {
+      {
         name: "🎬 Canais",
         description: "Canais variados de alta qualidade",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8",
         category: "Filmes"
       },
-	  
-	  {
+      {
         name: "🎬 Filmes1 ",
         description: "Canais variados de alta qualidade",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
@@ -104,7 +105,7 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais2.m3u8",
         category: "Mp4"
       },
-	  {
+      {
         name: "🎬 Mp4 1",
         description: "Canais variados de alta qualidade",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
@@ -115,20 +116,18 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part2.m3u",
         category: "Mp4"
       },
-	  
-	  {
+      {
         name: "🎬 Mp4 3",
         description: "Canais variados de alta qualidade",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part3.m3u",
         category: "Filmes"
       },
-	  {
+      {
         name: "🎬 Mp4 4",
         description: "Canais variados de alta qualidade",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part4.m3u",
         category: "Filmes"
       },
-	 
       {
         name: "🎭 Educativo",
         description: "Canais de séries, filmes e shows",
@@ -189,7 +188,7 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/novopono.m3u8",
         category: "Pt"
       },
-	  {
+      {
         name: "👶 Desenhos",
         description: "Conteúdo seguro para crianças",
         url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_desenhos.m3u",
@@ -211,13 +210,36 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
       { name: "Novo", filename: "novopono.m3u8" }
     ];
 
-    // MELHORIA 1: Cache para melhor performance
+    const minhasListasConfig = [
+      {
+        name: "🔥 Minha Lista Principal",
+        description: "Lista 01",
+        url: "http://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
+      },
+      {
+        name: "🔥 Minha 02",
+        description: "Lista 02",
+        url: "http://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
+      },
+      {
+        name: "🔥 Minha 03",
+        description: "Lista 03",
+        url: "http://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
+      },
+      {
+        name: "🔥 Minha Lista 04",
+        description: "Lista 04",
+        url: "http://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
+      }
+    ];
+
+    // Cache para melhor performance
     const cache = {
         playlists: new Map(),
         lastAccessed: new Map()
     };
 
-    // MELHORIA 2: Debounce para navegação mais fluida
+    // Debounce para navegação mais fluida
     function debounce(func, delay) {
         let timeoutId;
         return function (...args) {
@@ -226,14 +248,14 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         };
     }
 
-    // MELHORIA 3: Tratamento de erros mais robusto
+    // Tratamento de erros mais robusto
     function handleError(error, context = 'Operação') {
         console.error(`[${context}] Erro:`, error);
         const userMessage = error.message || 'Erro desconhecido';
-        showMessage(`⌐ ${context}: ${userMessage}`, 'error');
+        showMessage(`❌ ${context}: ${userMessage}`, 'error');
     }
 
-    // MELHORIA 4: Validação de URL mais rigorosa
+    // Validação de URL mais rigorosa
     function isValidUrl(string) {
         try {
             const url = new URL(string);
@@ -243,7 +265,7 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         }
     }
 
-    // Função para debug do foco (otimizada)
+    // Função para debug do foco
     function debugFocus(context) {
         if (console.debug) {
             console.debug(`[${context}]`, {
@@ -256,80 +278,384 @@ let restoringState = false; // evita que updateChannelList roube o foco durante 
         }
     }
 
-    // MELHORIA 5: Navegação com categorias recolhíveis otimizada
+    // ===== NOVO: SISTEMA DE PLAYER OVERLAY NATIVO =====
+    
+    function createPlayerOverlay() {
+        let overlay = document.getElementById("nativePlayerOverlay");
+        if (overlay) return overlay;
+        
+        overlay = document.createElement("div");
+        overlay.id = "nativePlayerOverlay";
+        overlay.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 10000;
+            flex-direction: column;
+        `;
+        
+        // Container do topo com info e controles
+        const topBar = document.createElement("div");
+        topBar.id = "playerTopBar";
+        topBar.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            padding: 20px;
+            z-index: 10001;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        const channelInfo = document.createElement("div");
+        channelInfo.id = "playerChannelInfo";
+        channelInfo.style.cssText = `
+            color: #fff;
+            font-size: 1.5em;
+            font-weight: bold;
+        `;
+        
+        const closeBtn = document.createElement("button");
+        closeBtn.id = "playerCloseBtn";
+        closeBtn.textContent = "✕ Fechar";
+        closeBtn.style.cssText = `
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        `;
+        closeBtn.onclick = closePlayerOverlay;
+        
+        topBar.appendChild(channelInfo);
+        topBar.appendChild(closeBtn);
+        
+        // Vídeo player nativo
+        const videoPlayer = document.createElement("video");
+        videoPlayer.id = "nativeVideoPlayer";
+        videoPlayer.controls = true;
+        videoPlayer.autoplay = true;
+        videoPlayer.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: #000;
+        `;
+        
+        // Botões de navegação (próximo canal)
+        const bottomBar = document.createElement("div");
+        bottomBar.id = "playerBottomBar";
+        bottomBar.style.cssText = `
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            z-index: 10001;
+        `;
+        
+        const prevBtn = document.createElement("button");
+        prevBtn.textContent = "⏮ Anterior";
+        prevBtn.className = "player-nav-btn";
+        prevBtn.style.cssText = `
+            background: #333;
+            color: white;
+            border: 2px solid #666;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        `;
+        prevBtn.onclick = () => playPreviousChannel();
+        
+        const nextBtn = document.createElement("button");
+        nextBtn.textContent = "⏭ Próximo";
+        nextBtn.className = "player-nav-btn";
+        nextBtn.style.cssText = `
+            background: #333;
+            color: white;
+            border: 2px solid #666;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        `;
+        nextBtn.onclick = () => playNextChannel();
+        
+        bottomBar.appendChild(prevBtn);
+        bottomBar.appendChild(nextBtn);
+        
+        overlay.appendChild(topBar);
+        overlay.appendChild(videoPlayer);
+        overlay.appendChild(bottomBar);
+        document.body.appendChild(overlay);
+        
+        // Eventos de teclado no overlay
+        overlay.addEventListener("keydown", handlePlayerKeydown);
+        
+        // Auto-avançar no fim do vídeo
+        videoPlayer.addEventListener("ended", () => {
+            console.log("🔄 Vídeo terminou, avançando para o próximo canal...");
+            playNextChannel();
+        });
+        
+        return overlay;
+    }
+    
+    function handlePlayerKeydown(e) {
+        console.log("Tecla no player:", e.key);
+        
+        if (e.key === "Escape" || e.key === "Backspace" || e.keyCode === 10009) {
+            e.preventDefault();
+            closePlayerOverlay();
+        } else if (e.key === "ArrowRight" || e.keyCode === 39) {
+            e.preventDefault();
+            playNextChannel();
+        } else if (e.key === "ArrowLeft" || e.keyCode === 37) {
+            e.preventDefault();
+            playPreviousChannel();
+        } else if (isOKKey(e)) {
+            // OK no player pode pausar/play
+            const videoEl = document.getElementById("nativeVideoPlayer");
+            if (videoEl) {
+                if (videoEl.paused) {
+                    videoEl.play();
+                } else {
+                    videoEl.pause();
+                }
+            }
+        }
+    }
+    
+    function openChannelInPlayer(url, name, channelIndex = -1) {
+        try {
+            if (!isValidUrl(url)) {
+                throw new Error('URL do canal inválida');
+            }
+
+            console.log(`🎯 Abrindo canal no overlay: ${name}`, { url, channelIndex });
+            
+            const overlay = createPlayerOverlay();
+            const videoEl = document.getElementById("nativeVideoPlayer");
+            const infoEl = document.getElementById("playerChannelInfo");
+            
+            // Atualiza informações
+            currentChannelIndex = channelIndex;
+            lastPlayedChannelIndex = channelIndex;
+            infoEl.textContent = `📺 ${name}`;
+            
+            // Limpa HLS anterior
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
+            // Detecta tipo de stream
+            const isM3U8 = url.toLowerCase().includes('.m3u8');
+            const isMP4 = url.toLowerCase().endsWith('.mp4');
+            
+            if (isM3U8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                // Usar HLS.js para streams m3u8
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+                
+                hls.loadSource(url);
+                hls.attachMedia(videoEl);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log("✅ Stream HLS carregado");
+                    videoEl.play().catch(err => {
+                        console.warn("Erro ao iniciar reprodução:", err);
+                    });
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error("Erro HLS:", data);
+                    if (data.fatal) {
+                        handleError(new Error(data.type), 'Reprodução HLS');
+                    }
+                });
+            } else if (videoEl.canPlayType('application/vnd.apple.mpegurl') || isMP4) {
+                // Suporte nativo (Safari, Smart TVs)
+                videoEl.src = url;
+                videoEl.play().catch(err => {
+                    console.warn("Erro ao iniciar reprodução nativa:", err);
+                });
+            } else {
+                throw new Error('Formato de vídeo não suportado');
+            }
+            
+            // Mostra overlay
+            overlay.style.display = "flex";
+            currentView = 'player';
+            
+            // Focar no overlay para capturar teclas
+            overlay.focus();
+            overlay.tabIndex = 0;
+            
+            showMessage(`▶️ Reproduzindo: ${name}`, 'success');
+            
+        } catch (error) {
+            handleError(error, 'Abertura do canal');
+        }
+    }
+    
+    function closePlayerOverlay() {
+        const overlay = document.getElementById("nativePlayerOverlay");
+        const videoEl = document.getElementById("nativeVideoPlayer");
+        
+        if (videoEl) {
+            videoEl.pause();
+            videoEl.src = "";
+        }
+        
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        
+        if (overlay) {
+            overlay.style.display = "none";
+        }
+        
+        currentView = 'channels';
+        
+        // Retorna foco para lista de canais
+        setTimeout(() => {
+            if (lastPlayedChannelIndex >= 0) {
+                focusLastPlayedChannel();
+            } else {
+                focusChannel();
+            }
+        }, 100);
+        
+        console.log("⏹️ Player fechado");
+    }
+    
+    function playNextChannel() {
+        if (currentChannelIndex >= 0 && currentChannelIndex < playlistUrls.length - 1) {
+            const nextIndex = currentChannelIndex + 1;
+            const nextChannel = playlistUrls[nextIndex];
+            openChannelInPlayer(nextChannel.url, nextChannel.name, nextIndex);
+        } else {
+            showMessage("🚫 Último canal da lista", 'info');
+        }
+    }
+    
+    function playPreviousChannel() {
+        if (currentChannelIndex > 0) {
+            const prevIndex = currentChannelIndex - 1;
+            const prevChannel = playlistUrls[prevIndex];
+            openChannelInPlayer(prevChannel.url, prevChannel.name, prevIndex);
+        } else {
+            showMessage("🚫 Primeiro canal da lista", 'info');
+        }
+    }
+    
+    function focusLastPlayedChannel() {
+        if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
+            const lastChannel = playlistUrls[lastPlayedChannelIndex];
+            const group = lastChannel.group;
+            const channelsInGroup = playlistUrls.filter(c => c.group === group);
+            showCategoryOverlay(group, channelsInGroup);
+            
+            requestAnimationFrame(() => {
+                const targetChannelElement = overlayChannels.find(
+                    el => el.dataset.url === lastChannel.url
+                );
+                if (targetChannelElement) {
+                    setOverlayFocus(overlayChannels.indexOf(targetChannelElement));
+                }
+            });
+        }
+    }
+    
+    // ===== FIM DO SISTEMA DE PLAYER OVERLAY =====
+
+    // Navegação com categorias recolhíveis otimizada
     function getVisibleNavigableItems() {
-    const headers = Array.from(document.querySelectorAll(".category-header"));
-    
-    const visibleChannels = Array.from(document.querySelectorAll("ul.category-sublist"))
-        .filter(ul => ul.style.display === "block" || ul.style.display === "")
-        .flatMap(ul => Array.from(ul.querySelectorAll(".channel-item")));
-    
-    const allItems = [...headers, ...visibleChannels];
-    
-    console.log(`Itens navegáveis: ${allItems.length} (${headers.length} headers, ${visibleChannels.length} canais)`);
-    
-    return allItems;
-}
-
-    function setFocusElement(el) {
-    if (!el) return;
-    
-    // Remove foco anterior de todos os elementos
-    document.querySelectorAll(".focused").forEach(n => n.classList.remove("focused"));
-    
-    // Aplica novo foco
-    el.classList.add("focused");
-    el.focus();
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    // Atualiza índice atual
-    channelItems = getVisibleNavigableItems();
-    currentFocusIndex = channelItems.indexOf(el);
-    
-    console.log(`Foco aplicado em: ${el.textContent?.substring(0, 50)} (índice: ${currentFocusIndex})`);
-}
-
-// CORREÇÃO 3: Função toggleCategory melhorada
-function toggleCategory(headerEl, subListEl, focusFirstChannel = false) {
-    const isOpen = subListEl.style.display === "block";
-    
-    // Toggle visibility
-    subListEl.style.display = isOpen ? "none" : "block";
-    headerEl.setAttribute("aria-expanded", (!isOpen).toString());
-
-    // Atualiza ícone
-    const label = headerEl.querySelector(".cat-label");
-    if (label) {
-        const groupName = headerEl.dataset.group;
-        label.textContent = (isOpen ? "► " : "▼ ") + groupName;
+        const headers = Array.from(document.querySelectorAll(".category-header"));
+        
+        const visibleChannels = Array.from(document.querySelectorAll("ul.category-sublist"))
+            .filter(ul => ul.style.display === "block" || ul.style.display === "")
+            .flatMap(ul => Array.from(ul.querySelectorAll(".channel-item")));
+        
+        const allItems = [...headers, ...visibleChannels];
+        
+        console.log(`Itens navegáveis: ${allItems.length} (${headers.length} headers, ${visibleChannels.length} canais)`);
+        
+        return allItems;
     }
 
-    // CRÍTICO: Recalcular itens navegáveis após mudança
-    setTimeout(() => {
-        channelItems = getVisibleNavigableItems();
+    function setFocusElement(el) {
+        if (!el) return;
         
-        if (!isOpen) { // Abrindo categoria
-            if (focusFirstChannel) {
-                const firstChannel = subListEl.querySelector(".channel-item");
-                if (firstChannel) {
-                    setFocusElement(firstChannel);
+        document.querySelectorAll(".focused").forEach(n => n.classList.remove("focused"));
+        
+        el.classList.add("focused");
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        channelItems = getVisibleNavigableItems();
+        currentFocusIndex = channelItems.indexOf(el);
+        
+        console.log(`Foco aplicado em: ${el.textContent?.substring(0, 50)} (índice: ${currentFocusIndex})`);
+    }
+
+    function toggleCategory(headerEl, subListEl, focusFirstChannel = false) {
+        const isOpen = subListEl.style.display === "block";
+        
+        subListEl.style.display = isOpen ? "none" : "block";
+        headerEl.setAttribute("aria-expanded", (!isOpen).toString());
+
+        const label = headerEl.querySelector(".cat-label");
+        if (label) {
+            const groupName = headerEl.dataset.group;
+            label.textContent = (isOpen ? "▶ " : "▼ ") + groupName;
+        }
+
+        setTimeout(() => {
+            channelItems = getVisibleNavigableItems();
+            
+            if (!isOpen) {
+                if (focusFirstChannel) {
+                    const firstChannel = subListEl.querySelector(".channel-item");
+                    if (firstChannel) {
+                        setFocusElement(firstChannel);
+                    } else {
+                        setFocusElement(headerEl);
+                    }
                 } else {
                     setFocusElement(headerEl);
                 }
             } else {
-                setFocusElement(headerEl);
+                const focusedElement = document.querySelector('.focused');
+                if (focusedElement && subListEl.contains(focusedElement)) {
+                    setFocusElement(headerEl);
+                }
             }
-        } else { // Fechando categoria
-            // Se estava focado em um canal da categoria fechada, voltar para header
-            const focusedElement = document.querySelector('.focused');
-            if (focusedElement && subListEl.contains(focusedElement)) {
-                setFocusElement(headerEl);
-            }
-        }
-    }, 10); // Pequeno delay para garantir atualização do DOM
-}
+        }, 10);
+    }
 
-    // NOVA FUNCIONALIDADE: Overlay para mostrar canais por categoria
+    // Overlay para mostrar canais por categoria
     function createOverlayElement() {
         let overlay = document.getElementById("channelOverlay");
         if (!overlay) {
@@ -377,9 +703,8 @@ function toggleCategory(headerEl, subListEl, focusFirstChannel = false) {
 
             const closeBtn = document.createElement("button");
             closeBtn.className = "overlay-close";
-closeBtn.tabIndex = 0;
-
-			closeBtn.textContent = "✕ Fechar";
+            closeBtn.tabIndex = 0;
+            closeBtn.textContent = "✕ Fechar";
             closeBtn.style.cssText = `
                 background: #ff4444;
                 color: white;
@@ -420,11 +745,9 @@ closeBtn.tabIndex = 0;
 
             title.textContent = `📺 ${groupName} (${channels.length} canais)`;
             
-            // Limpar grid
             grid.innerHTML = "";
             overlayChannels = [];
 
-            // Adicionar canais
             channels.forEach((channel, index) => {
                 const channelDiv = document.createElement("div");
                 channelDiv.className = "overlay-channel-item";
@@ -442,18 +765,16 @@ closeBtn.tabIndex = 0;
                 `;
 
                 channelDiv.innerHTML = `
-    <div style="font-weight: bold; margin-bottom: 5px; color: #6bff6b;">
-        ${channel.name} ${channel.url && channel.url.toLowerCase().endsWith(".mp4") 
-            ? `<span style="font-size: 0.8em; color: yellow;">(MP4)</span>` 
-            : ""}
-    </div>
-    <div style="font-size: 0.8em; color: #aaa;">
-        Grupo: ${channel.group}
-    </div>
-`;
+                    <div style="font-weight: bold; margin-bottom: 5px; color: #6bff6b;">
+                        ${channel.name} ${channel.url && channel.url.toLowerCase().endsWith(".mp4") 
+                            ? `<span style="font-size: 0.8em; color: yellow;">(MP4)</span>` 
+                            : ""}
+                    </div>
+                    <div style="font-size: 0.8em; color: #aaa;">
+                        Grupo: ${channel.group}
+                    </div>
+                `;
 
-
-                // Eventos
                 channelDiv.onclick = () => {
                     const channelIndex = playlistUrls.findIndex(ch => ch.url === channel.url);
                     openChannelInPlayer(channel.url, channel.name, channelIndex);
@@ -475,17 +796,14 @@ closeBtn.tabIndex = 0;
                 overlayChannels.push(channelDiv);
             });
 
-            // Mostrar overlay
             overlay.style.display = "block";
             currentView = 'overlay';
             overlayFocusIndex = 0;
 
-            // Focar primeiro item
             if (overlayChannels.length > 0) {
                 setOverlayFocus(0);
             }
 
-            // Fechar com ESC
             const escHandler = (e) => {
                 if (e.key === "Escape") {
                     hideCategoryOverlay();
@@ -510,7 +828,6 @@ closeBtn.tabIndex = 0;
         overlayChannels = [];
         overlayFocusIndex = 0;
         
-        // Voltar foco para lista de categorias
         setTimeout(() => {
             const firstHeader = document.querySelector('.category-header');
             if (firstHeader) {
@@ -522,14 +839,12 @@ closeBtn.tabIndex = 0;
     function setOverlayFocus(index) {
         if (!overlayChannels.length) return;
         
-        // Remove foco anterior
         overlayChannels.forEach(item => {
             item.classList.remove("focused");
             item.style.borderColor = "#444";
             item.style.background = "#2a2a2a";
         });
 
-        // Aplica novo foco
         const focusedItem = overlayChannels[index];
         focusedItem.classList.add("focused");
         focusedItem.style.borderColor = "#6bff6b";
@@ -547,12 +862,10 @@ closeBtn.tabIndex = 0;
         setOverlayFocus(newIndex);
     }
 
-    // MELHORIA 6: Sistema de cache para playlists
     function cachePlaylist(key, data) {
         cache.playlists.set(key, data);
         cache.lastAccessed.set(key, Date.now());
         
-        // Limpa cache antigo (máximo 10 playlists)
         if (cache.playlists.size > 10) {
             const oldest = [...cache.lastAccessed.entries()]
                 .sort(([,a], [,b]) => a - b)[0][0];
@@ -569,85 +882,20 @@ closeBtn.tabIndex = 0;
         return null;
     }
 
-    // Função para salvar estado da playlist (melhorada)
-    
-function savePlaylistState(playlistData, playlistName, playlistType) {
-    // função preservada, mas sem persistência localStorage
-    try {
-        // Apenas cria um objeto de estado em memória (não persistido)
-        const playlistState = {
-            urls: playlistData,
-            name: playlistName,
-            type: playlistType,
-            timestamp: Date.now(),
-            version: "1.1" // Para futuras migrações
-        };
-        // Nota: persistência removida por solicitação do usuário.
-        // Se desejar: enviar para servidor ou usar outra forma de armazenamento.
-        // console.log('savePlaylistState (desativado):', playlistState);
-    } catch (error) {
-        handleError(error, 'Salvamento de playlist');
-    }
-}
-
-
-    // MELHORIA 7: Função principal otimizada para abrir no player
-    
-function openChannelInPlayer(url, name, channelIndex = -1) {
-    try {
-        if (!isValidUrl(url)) {
-            throw new Error('URL do canal inválida');
+    function savePlaylistState(playlistData, playlistName, playlistType) {
+        try {
+            const playlistState = {
+                urls: playlistData,
+                name: playlistName,
+                type: playlistType,
+                timestamp: Date.now(),
+                version: "1.1"
+            };
+        } catch (error) {
+            handleError(error, 'Salvamento de playlist');
         }
-
-        console.log(`🎯 Abrindo canal: ${name}`, { url, channelIndex });
-
-        // Monta a URL do player (parâmetros para fallback caso postMessage falhe)
-        const playerUrl = `player.html?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&index=${channelIndex}`;
-
-        // Abrir player em nova aba dentro do mesmo evento de clique
-        const newWin = window.open(playerUrl, '_blank');
-
-        if (newWin) {
-            // Tenta focar a nova janela
-            try { newWin.focus(); } catch (e) { /* ignore */ }
-
-            // Sinal para o player iniciar imediatamente usando postMessage.
-            // O player deve escutar window.addEventListener('message', ...) e reagir a { action: 'play', ... }.
-            const payload = { action: 'play', url, name, channelIndex };
-
-            // Tentar postar imediatamente (funciona se mesma origem / permission)
-            let posted = false;
-            try {
-                newWin.postMessage(payload, '*');
-                posted = true;
-            } catch (err) {
-                // postMessage pode falhar em alguns cenários; vamos usar um loop para tentar novamente até um timeout
-            }
-
-            if (!posted) {
-                const start = Date.now();
-                const interval = setInterval(() => {
-                    try {
-                        newWin.postMessage(payload, '*');
-                        clearInterval(interval);
-                    } catch (err) {
-                        if (Date.now() - start > 5000) { // timeout 5s
-                            clearInterval(interval);
-                        }
-                    }
-                }, 200);
-            }
-        } else {
-            // Pop-up bloqueado: abrir no mesmo contexto como fallback
-            location.href = playerUrl;
-        }
-    } catch (error) {
-        handleError(error, 'Abertura do canal');
     }
-}
 
-
-    // MELHORIA 8: Sistema de mensagens melhorado
     function showMessage(text, type = 'info') {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type === 'error' ? 'error-message' : 
@@ -668,121 +916,45 @@ function openChannelInPlayer(url, name, channelIndex = -1) {
         }
     }
 
-function focusLastPlayedChannelInOverlay() {
-    if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
-        const lastChannel = playlistUrls[lastPlayedChannelIndex];
-        const group = lastChannel.group;
-        const channelsInGroup = playlistUrls.filter(c => c.group === group);
-
-        // Abre overlay da categoria
-        showCategoryOverlay(group, channelsInGroup);
-
-        // Garantir que o foco só será aplicado após o DOM renderizar
-        requestAnimationFrame(() => {
-            const targetChannelElement = overlayChannels.find(
-                el => el.dataset.url === lastChannel.url
-            );
-            if (targetChannelElement) {
-                setOverlayFocus(overlayChannels.indexOf(targetChannelElement));
-                console.log(`🎯 Retorno com foco no último canal: ${lastChannel.name}`);
-            }
-        });
-    }
-}
-
-
-
-
-    // Função para verificar retorno do player (otimizada)
     function checkReturnFromPlayer() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const returnFromPlayer = urlParams.get('return');
-        const raw = null;
-
-        if (returnFromPlayer === 'true' && raw) {
-            const currentChannelData = JSON.parse(raw);
-
-            if (typeof currentChannelData.channelIndex === 'number') {
-                lastPlayedChannelIndex = currentChannelData.channelIndex;
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const returnFromPlayer = urlParams.get('return');
+            
+            if (returnFromPlayer === 'true') {
+                return restorePlaylistState();
             }
-            return restorePlaylistState(currentChannelData);
+        } catch (error) {
+            handleError(error, 'Verificação de retorno');
         }
-    } catch (error) {
-        handleError(error, 'Verificação de retorno');
-    }
-    return false;
-}
-
-
-    // Função para restaurar estado da playlist (melhorada)
-    function restorePlaylistState(currentChannelData) {
-    try {
-        const saved = null;
-        if (!saved) return false;
-
-        const playlistState = JSON.parse(saved);
-        if (!playlistState.urls || !Array.isArray(playlistState.urls)) {
-            throw new Error('Dados de playlist inválidos');
-        }
-
-        restoringState = true; // evita foco automático em headers
-
-        playlistUrls = playlistState.urls;
-        updateChannelList();
-        hideAllSelectors();
-
-        // Descobrir corretamente o último canal: por índice ou por URL
-        let idx = (typeof lastPlayedChannelIndex === 'number') ? lastPlayedChannelIndex : -1;
-        let lastUrl = currentChannelData?.url;
-
-        if (idx < 0 || idx >= playlistUrls.length) {
-            if (lastUrl) {
-                idx = playlistUrls.findIndex(c => c.url === lastUrl);
-            }
-        }
-
-        if (idx >= 0) {
-            lastPlayedChannelIndex = idx;
-            const lastChannel = playlistUrls[idx];
-            const group = lastChannel.group;
-            const channelsInGroup = playlistUrls.filter(c => c.group === group);
-
-            // Abre o overlay da categoria correta
-            showCategoryOverlay(group, channelsInGroup);
-
-            // Foca o canal correto após a pintura do overlay
-            requestAnimationFrame(() => {
-                const el = overlayChannels.find(n => n.dataset.url === lastChannel.url);
-                if (el) {
-                    setOverlayFocus(overlayChannels.indexOf(el));
-                } else {
-                    // fallback: foca header da categoria
-                    const header = Array.from(document.querySelectorAll('.category-header'))
-                        .find(h => h.dataset.group === group);
-                    if (header) setFocusElement(header);
-                }
-            });
-        } else {
-            // fallback total: não achou o canal; só foca na lista
-            focusChannel();
-        }
-
-        showMessage(`✅ Playlist "${playlistState.name}" restaurada - Canal anterior pré-selecionado`, 'success');
-        return true;
-
-    } catch (error) {
-        handleError(error, 'Restauração de playlist');
-
         return false;
-    } finally {
-        restoringState = false;
     }
-}
 
+    function restorePlaylistState(currentChannelData) {
+        try {
+            if (!playlistUrls || playlistUrls.length === 0) return false;
 
+            restoringState = true;
+            updateChannelList();
+            hideAllSelectors();
 
-    // MELHORIA 9: Mostrar seletor de playlists remotas otimizado
+            if (lastPlayedChannelIndex >= 0 && lastPlayedChannelIndex < playlistUrls.length) {
+                focusLastPlayedChannel();
+            } else {
+                focusChannel();
+            }
+
+            showMessage(`✅ Playlist restaurada`, 'success');
+            return true;
+
+        } catch (error) {
+            handleError(error, 'Restauração de playlist');
+            return false;
+        } finally {
+            restoringState = false;
+        }
+    }
+
     function showRemotePlaylistSelector() {
         hideAllSelectors();
         remotePlaylistSelector.style.display = "block";
@@ -792,34 +964,30 @@ function focusLastPlayedChannelInOverlay() {
         setTimeout(() => focusFirstRemotePlaylist(), 100);
     }
 
-    // Função para atualizar lista de playlists remotas (otimizada)
     function updateRemotePlaylistList() {
         try {
             const fragment = document.createDocumentFragment();
-    // Adicionar categoria 'Todos os Canais' no topo
-    const allHeader = document.createElement("li");
-    allHeader.className = "category-header";
-    allHeader.setAttribute("tabindex", "0");
-    allHeader.setAttribute("role", "button");
-    allHeader.setAttribute("aria-expanded", "false");
-    allHeader.dataset.group = "Todos os Canais";
-    allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
-    allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
-    allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
-    fragment.appendChild(allHeader);
+            
+            const allHeader = document.createElement("li");
+            allHeader.className = "category-header";
+            allHeader.setAttribute("tabindex", "0");
+            allHeader.setAttribute("role", "button");
+            allHeader.setAttribute("aria-expanded", "false");
+            allHeader.dataset.group = "Todos os Canais";
+            allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
+            allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
+            allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
+            fragment.appendChild(allHeader);
         
-    // Agrupar por categoria
             const categories = [...new Set(remotePlaylistsConfig.map(p => p.category))];
             
             categories.forEach(category => {
-                // Header da categoria
                 const categoryHeader = document.createElement("li");
                 categoryHeader.innerHTML = `<strong>📂 ${category}</strong>`;
                 categoryHeader.className = "category-header-remote";
                 categoryHeader.style.cssText = "color: #6bff6b; padding: 10px 0 5px 0; border-bottom: 1px solid #333;";
                 fragment.appendChild(categoryHeader);
                 
-                // Playlists da categoria
                 const categoryPlaylists = remotePlaylistsConfig.filter(p => p.category === category);
                 categoryPlaylists.forEach(playlist => {
                     const li = document.createElement("li");
@@ -853,14 +1021,12 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // MELHORIA 10: Carregamento de playlist remota com cache e timeout
     async function loadRemotePlaylist(url, name) {
         try {
             if (!isValidUrl(url)) {
                 throw new Error('URL da playlist inválida');
             }
 
-            // Verificar cache
             const cached = getCachedPlaylist(url);
             if (cached) {
                 console.log('📦 Usando playlist em cache:', name);
@@ -874,11 +1040,10 @@ function focusLastPlayedChannelInOverlay() {
                 return;
             }
 
-            showMessage(`🔄 Carregando ${name}...`, 'loading');
+            showMessage(`📄 Carregando ${name}...`, 'loading');
             
-            // Fetch com timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             
             const response = await fetch(url, { 
                 signal: controller.signal,
@@ -898,7 +1063,6 @@ function focusLastPlayedChannelInOverlay() {
                 throw new Error('Playlist vazia ou formato inválido');
             }
             
-            // Salvar no cache
             cachePlaylist(url, parsedPlaylist);
             
             playlistUrls = parsedPlaylist;
@@ -918,7 +1082,6 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // MELHORIA 11: Detecção de playlists com Promise.allSettled
     async function detectAvailablePlaylists() {
         showMessage("🔍 Verificando playlists disponíveis...", 'loading');
         
@@ -928,7 +1091,7 @@ function focusLastPlayedChannelInOverlay() {
                     const response = await fetch(`playlists/${playlist.filename}`, { 
                         method: 'HEAD',
                         cache: 'no-cache',
-                        signal: AbortSignal.timeout(5000) // 5s timeout
+                        signal: AbortSignal.timeout(5000)
                     });
                     
                     return {
@@ -953,12 +1116,11 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // Função para mostrar seletor de playlists (otimizada)
     async function showPlaylistSelector() {
         hideAllSelectors();
         playlistSelector.style.display = "block";
         
-        playlistList.innerHTML = "<li class='loading'>🔄 Detectando playlists disponíveis...</li>";
+        playlistList.innerHTML = "<li class='loading'>📄 Detectando playlists disponíveis...</li>";
         
         try {
             const detectedPlaylists = await detectAvailablePlaylists();
@@ -972,7 +1134,6 @@ function focusLastPlayedChannelInOverlay() {
         setTimeout(() => focusFirstPlaylist(), 100);
     }
 
-    // Funções auxiliares (mantidas com pequenas otimizações)
     function hideAllSelectors() {
         playlistSelector.style.display = "none";
         remotePlaylistSelector.style.display = "none";
@@ -992,20 +1153,18 @@ function focusLastPlayedChannelInOverlay() {
     function updatePlaylistList(playlists) {
         try {
             const fragment = document.createDocumentFragment();
-    // Adicionar categoria 'Todos os Canais' no topo
-    const allHeader = document.createElement("li");
-    allHeader.className = "category-header";
-    allHeader.setAttribute("tabindex", "0");
-    allHeader.setAttribute("role", "button");
-    allHeader.setAttribute("aria-expanded", "false");
-    allHeader.dataset.group = "Todos os Canais";
-    allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
-    allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
-    allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
-    fragment.appendChild(allHeader);
-
             
-            // Opção manual
+            const allHeader = document.createElement("li");
+            allHeader.className = "category-header";
+            allHeader.setAttribute("tabindex", "0");
+            allHeader.setAttribute("role", "button");
+            allHeader.setAttribute("aria-expanded", "false");
+            allHeader.dataset.group = "Todos os Canais";
+            allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
+            allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
+            allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
+            fragment.appendChild(allHeader);
+            
             const manualLi = document.createElement("li");
             manualLi.textContent = "✏️ Digite nome do arquivo manualmente";
             manualLi.className = "playlist-item manual-input";
@@ -1021,7 +1180,6 @@ function focusLastPlayedChannelInOverlay() {
             const availablePlaylist = playlists.filter(p => p.available);
             const unavailablePlaylist = playlists.filter(p => !p.available);
             
-            // Playlists disponíveis
             if (availablePlaylist.length > 0) {
                 const headerLi = document.createElement("li");
                 headerLi.innerHTML = "<strong>📂 Disponíveis:</strong>";
@@ -1040,7 +1198,6 @@ function focusLastPlayedChannelInOverlay() {
                 });
             }
             
-            // Playlists indisponíveis
             if (unavailablePlaylist.length > 0) {
                 const headerLi = document.createElement("li");
                 headerLi.innerHTML = "<strong>🔒 Indisponíveis:</strong>";
@@ -1077,7 +1234,6 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // MELHORIA 12: Carregamento de playlist local com cache
     async function loadPlaylistFromFile(filename) {
         try {
             if (!filename) {
@@ -1099,7 +1255,7 @@ function focusLastPlayedChannelInOverlay() {
                 return;
             }
 
-            showMessage(`🔄 Carregando ${filename}...`, 'loading');
+            showMessage(`📄 Carregando ${filename}...`, 'loading');
             
             const response = await fetch(`playlists/${filename}`, {
                 cache: 'no-cache',
@@ -1117,7 +1273,6 @@ function focusLastPlayedChannelInOverlay() {
                 throw new Error('Playlist vazia ou formato inválido');
             }
             
-            // Salvar no cache
             cachePlaylist(cacheKey, parsedPlaylist);
             
             playlistUrls = parsedPlaylist;
@@ -1143,7 +1298,6 @@ function focusLastPlayedChannelInOverlay() {
                 throw new Error('URL inválida. Use http:// ou https://');
             }
 
-            // Verificar cache
             const cached = getCachedPlaylist(trimmedUrl);
             if (cached) {
                 console.log('📦 Usando playlist de URL em cache');
@@ -1157,7 +1311,7 @@ function focusLastPlayedChannelInOverlay() {
                 return;
             }
 
-            showMessage("🔄 Carregando playlist de URL...", 'loading');
+            showMessage("📄 Carregando playlist de URL...", 'loading');
             
             const response = await fetch(trimmedUrl, {
                 signal: AbortSignal.timeout(10000)
@@ -1174,7 +1328,6 @@ function focusLastPlayedChannelInOverlay() {
                 throw new Error('Playlist vazia ou formato inválido');
             }
             
-            // Salvar no cache
             cachePlaylist(trimmedUrl, parsedPlaylist);
             
             playlistUrls = parsedPlaylist;
@@ -1212,7 +1365,6 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // MELHORIA 13: Parser de playlist otimizado com melhor tratamento de dados
     function parsePlaylist(content) {
         try {
             if (!content || typeof content !== 'string') {
@@ -1228,27 +1380,23 @@ function focusLastPlayedChannelInOverlay() {
                 const line = lines[i];
                 
                 if (line.startsWith("#EXTINF")) {
-                    // Extrair group-title
                     const groupMatch = line.match(/group-title="([^"]+)"/i);
                     currentGroup = groupMatch ? groupMatch[1].trim() : "Outros";
                     
-                    // Extrair nome do canal (após a vírgula)
                     const commaIndex = line.lastIndexOf(",");
                     if (commaIndex !== -1) {
                         currentName = line.substring(commaIndex + 1).trim();
                     }
                     
-                    // Se nome vazio, usar próxima linha se não for URL
                     if (!currentName && i + 1 < lines.length && !lines[i + 1].startsWith("http")) {
                         currentName = lines[i + 1];
-                        i++; // Pular próxima linha
+                        i++;
                     }
                     
                     if (!currentName) {
                         currentName = "Canal Desconhecido";
                     }
                 } else if (line.startsWith("http")) {
-                    // Validar URL
                     if (isValidUrl(line)) {
                         parsed.push({
                             url: line,
@@ -1257,16 +1405,14 @@ function focusLastPlayedChannelInOverlay() {
                         });
                     }
                     
-                    // Reset para próximo canal
                     currentName = "";
                     currentGroup = "Outros";
                 }
             }
 
             console.log(`📋 Playlist parseada: ${parsed.length} canais encontrados`);
-            // Atribui IDs temporários para navegação
-    parsed.forEach((c, i) => c.tempId = i);
-    return parsed;
+            parsed.forEach((c, i) => c.tempId = i);
+            return parsed;
             
         } catch (error) {
             handleError(error, 'Parser de playlist');
@@ -1274,33 +1420,20 @@ function focusLastPlayedChannelInOverlay() {
         }
     }
 
-    // MELHORIA 14: Função de atualização de lista de canais otimizada com DocumentFragment e overlay
     function updateChannelList() {
         try {
-			
             const fragment = document.createDocumentFragment();
-			// Mostrar nome da playlist atual no topo
-const savedState = JSON.parse(null || "{}");
-if (savedState.name) {
-    const playlistHeader = document.createElement("li");
-    playlistHeader.textContent = `📂 Playlist: ${savedState.name}`;
-    playlistHeader.style.cssText = "color: #00e676; padding: 15px 10px; font-weight: bold; font-size: 1.1em;";
-    fragment.appendChild(playlistHeader);
-}
-
-    // Adicionar categoria 'Todos os Canais' no topo
-    const allHeader = document.createElement("li");
-    allHeader.className = "category-header";
-    allHeader.setAttribute("tabindex", "0");
-    allHeader.setAttribute("role", "button");
-    allHeader.setAttribute("aria-expanded", "false");
-    allHeader.dataset.group = "Todos os Canais";
-    allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
-    allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
-    allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
-    fragment.appendChild(allHeader);
-
             
+            const allHeader = document.createElement("li");
+            allHeader.className = "category-header";
+            allHeader.setAttribute("tabindex", "0");
+            allHeader.setAttribute("role", "button");
+            allHeader.setAttribute("aria-expanded", "false");
+            allHeader.dataset.group = "Todos os Canais";
+            allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
+            allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
+            allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
+            fragment.appendChild(allHeader);
             
             if (playlistUrls.length === 0) {
                 const emptyLi = document.createElement("li");
@@ -1313,7 +1446,6 @@ if (savedState.name) {
                 return;
             }
 
-            // Agrupar por categoria
             const grouped = {};
             playlistUrls.forEach(channel => {
                 const group = channel.group || "Outros";
@@ -1321,11 +1453,9 @@ if (savedState.name) {
                 grouped[group].push(channel);
             });
 
-            // Ordenar grupos alfabeticamente
             const sortedGroups = Object.keys(grouped).sort();
 
             sortedGroups.forEach(group => {
-                // Cabeçalho da categoria
                 const header = document.createElement("li");
                 header.className = "category-header";
                 header.setAttribute("tabindex", "0");
@@ -1335,27 +1465,23 @@ if (savedState.name) {
                 header.innerHTML = `<strong class="cat-label">📺 ${group} (${grouped[group].length} canais)</strong>`;
                 header.style.cssText = "color: #6bff6b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #1a1a1a, #2a2a2a); border-radius: 5px; margin-bottom: 5px;";
 
-                // Ao clicar no header, mostrar overlay com canais da categoria
                 header.onclick = () => showCategoryOverlay(group, grouped[group]);
 
                 fragment.appendChild(header);
             });
 
-            // Atualizar DOM de uma vez
             channelList.innerHTML = "";
             channelList.appendChild(fragment);
 
-            // Atualizar referências
             channelItems = Array.from(document.querySelectorAll(".category-header"));
             currentView = 'channels';
 
-            // Focar no primeiro elemento
-            if (!restoringState) {    requestAnimationFrame(() => {
-        const firstElement = channelItems[0];
-        if (firstElement) setFocusElement(firstElement);
-    });
-}
-
+            if (!restoringState) {
+                requestAnimationFrame(() => {
+                    const firstElement = channelItems[0];
+                    if (firstElement) setFocusElement(firstElement);
+                });
+            }
 
             debugFocus('updateChannelList');
             
@@ -1374,7 +1500,6 @@ if (savedState.name) {
         try {
             let targetIndex = index;
             
-            // Se há um canal previamente reproduzido, tentar focar na categoria correspondente
             if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
                 const lastChannel = playlistUrls[lastPlayedChannelIndex];
                 const categoryHeader = Array.from(channelItems).find(header => 
@@ -1386,13 +1511,11 @@ if (savedState.name) {
                 }
             }
             
-            // Garantir que o índice está dentro dos limites
             targetIndex = Math.max(0, Math.min(targetIndex, channelItems.length - 1));
             
             currentFocusIndex = targetIndex;
             currentView = 'channels';
             
-            // Aplicar foco
             setFocusElement(channelItems[currentFocusIndex]);
             
             if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
@@ -1437,7 +1560,6 @@ if (savedState.name) {
         currentFocusIndex = -1;
     }
 
-    // MELHORIA 16: Sistema de navegação otimizado
     const debouncedMoveFocus = debounce((delta) => {
         if (currentView === 'overlay') {
             moveOverlayFocus(delta);
@@ -1445,29 +1567,23 @@ if (savedState.name) {
         }
         
         if (currentView === 'channels') {
-            // Sempre recalcular itens visíveis
             channelItems = Array.from(document.querySelectorAll(".category-header"));
             
             if (!channelItems.length) return;
 
-            // Encontrar elemento ativo atual
             const focused = document.querySelector('.focused') || document.activeElement;
             let currentIndex = channelItems.indexOf(focused);
             
-            // Se não encontrou elemento ativo, usar primeiro item
             if (currentIndex === -1) {
                 currentIndex = 0;
             }
 
-            // Calcular novo índice
             const newIndex = (currentIndex + delta + channelItems.length) % channelItems.length;
             
-            // Aplicar foco
             setFocusElement(channelItems[newIndex]);
             return;
         }
 
-        // Navegação em outras views (mantido igual)
         if (currentView === 'playlists' && playlistItems.length) {
             if (playlistFocusIndex >= 0) {
                 playlistItems[playlistFocusIndex]?.classList.remove("focused");
@@ -1497,27 +1613,16 @@ if (savedState.name) {
         debouncedMoveFocus(delta);
     }
 
-    // MELHORIA 17: Sistema de controles de teclado otimizado e mais responsivo
     function setupKeyboardControls() {
         document.addEventListener("keydown", (e) => {
             console.log(`Tecla pressionada: ${e.key}, View atual: ${currentView}`);
             
-            // Modo de busca (overlay de input)
-            if (currentView === 'search') {
-                if (isOKKey(e)) {
-                    e.preventDefault();
-                    const input = document.getElementById("searchInputField");
-                    if (input) performChannelSearch((input.value || "").trim());
-                    return;
-                } else if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
-                    e.preventDefault();
-                    hideSearchOverlay();
-                    return;
-                }
+            // Controles específicos para player overlay
+            if (currentView === 'player') {
+                return; // Já tratado em handlePlayerKeydown
             }
-
             
-            // Controles específicos para overlay
+            // Controles específicos para overlay de categorias
             if (currentView === 'overlay') {
                 if (e.key === "ArrowDown") {
                     e.preventDefault();
@@ -1531,12 +1636,12 @@ if (savedState.name) {
                 }
                 else if (e.key === "ArrowRight") {
                     e.preventDefault();
-                    moveOverlayFocus(4); // Pular uma linha no grid
+                    moveOverlayFocus(4);
                     return;
                 }
                 else if (e.key === "ArrowLeft") {
                     e.preventDefault();
-                    moveOverlayFocus(-4); // Voltar uma linha no grid
+                    moveOverlayFocus(-4);
                     return;
                 }
                 else if (isOKKey(e)) {
@@ -1548,11 +1653,10 @@ if (savedState.name) {
                     return;
                 }
                 else if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
-    e.preventDefault();
-    hideCategoryOverlay();
-    return;
-}
-
+                    e.preventDefault();
+                    hideCategoryOverlay();
+                    return;
+                }
             }
             
             // Navegação vertical nas listas
@@ -1618,77 +1722,45 @@ if (savedState.name) {
         });
     }
 
-    // MELHORIA 18: Event listeners otimizados
-    
-    // NOVA SEÇÃO: Minhas Listas fixas
-    const minhasListasConfig = [
-      {
-        name: "📥 Minha Lista Principal",
-        description: "Lista 01",
-        url: "https://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
-      },
-	  
-	  
-	  {
-        name: "📥 Minha 02",
-        description: "Lista 02",
-        url: "https://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
-      },
-	  {
-        name: "📥 Minha 03",
-        description: "Lista 03",
-        url: "https://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
-      },
-	  
-	  {
-        name: "📥 Minha Lista 04",
-        description: "Lista 04",
-        url: "https://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
-      }
-      // Adicione mais listas aqui se desejar
-    ];
-
     function showMinhasListasSelector() {
-      hideAllSelectors();
-      remotePlaylistSelector.style.display = "block";
-      updateMinhasListasList();
-      currentView = 'minhasListas';
-      setTimeout(() => focusFirstRemotePlaylist(), 100);
+        hideAllSelectors();
+        remotePlaylistSelector.style.display = "block";
+        updateMinhasListasList();
+        currentView = 'minhasListas';
+        setTimeout(() => focusFirstRemotePlaylist(), 100);
     }
 
     function updateMinhasListasList() {
-      try {
-          const fragment = document.createDocumentFragment();
-          const header = document.createElement("li");
-          header.innerHTML = "<strong>📥 Suas Listas Fixas:</strong>";
-          header.className = "section-header";
-          header.style.cssText = "color: #6bff6b; padding: 10px 0;";
-          fragment.appendChild(header);
+        try {
+            const fragment = document.createDocumentFragment();
+            const header = document.createElement("li");
+            header.innerHTML = "<strong>🔥 Suas Listas Fixas:</strong>";
+            header.className = "section-header";
+            header.style.cssText = "color: #6bff6b; padding: 10px 0;";
+            fragment.appendChild(header);
 
-          minhasListasConfig.forEach(playlist => {
-              const li = document.createElement("li");
-              li.className = "remote-playlist-item";
-              li.setAttribute("tabindex", "0");
-              li.dataset.url = playlist.url;
-              li.dataset.name = playlist.name;
-              li.innerHTML = `<div><strong>${playlist.name}</strong></div>
-                              <div style='font-size:0.9em;color:#ccc;margin-left:10px;'>${playlist.description}</div>`;
-              li.onclick = () => loadRemotePlaylist(playlist.url, playlist.name);
-              fragment.appendChild(li);
-          });
+            minhasListasConfig.forEach(playlist => {
+                const li = document.createElement("li");
+                li.className = "remote-playlist-item";
+                li.setAttribute("tabindex", "0");
+                li.dataset.url = playlist.url;
+                li.dataset.name = playlist.name;
+                li.innerHTML = `<div><strong>${playlist.name}</strong></div>
+                                <div style='font-size:0.9em;color:#ccc;margin-left:10px;'>${playlist.description}</div>`;
+                li.onclick = () => loadRemotePlaylist(playlist.url, playlist.name);
+                fragment.appendChild(li);
+            });
 
-          remotePlaylistList.innerHTML = "";
-          remotePlaylistList.appendChild(fragment);
-          remotePlaylistItems = Array.from(document.querySelectorAll(".remote-playlist-item"));
-          showMessage(`📥 ${minhasListasConfig.length} listas fixas disponíveis`, 'success');
-      } catch (error) {
-          handleError(error, 'Atualização de Minhas Listas');
-      }
+            remotePlaylistList.innerHTML = "";
+            remotePlaylistList.appendChild(fragment);
+            remotePlaylistItems = Array.from(document.querySelectorAll(".remote-playlist-item"));
+            showMessage(`🔥 ${minhasListasConfig.length} listas fixas disponíveis`, 'success');
+        } catch (error) {
+            handleError(error, 'Atualização de Minhas Listas');
+        }
     }
 
-
     function setupEventListeners() {
-        // Botões principais
         const btnHome = document.getElementById("btnHome");
         if (btnHome) btnHome.addEventListener("click", () => {
             if (confirm("Voltar para a página inicial?")) {
@@ -1704,98 +1776,54 @@ if (savedState.name) {
         const btnSingle = document.getElementById("btnSingle");
         if (btnSingle) btnSingle.addEventListener("click", loadSingleChannel);
         
-        // Botões de voltar
         document.getElementById("btnBackFromRemote").addEventListener("click", backToButtons);
         document.getElementById("btnBackFromLocal").addEventListener("click", backToButtons);
-    document.getElementById("btnUpload").addEventListener("click", () => {
-  document.getElementById("fileInput").click();
-});
+        
+        document.getElementById("btnUpload").addEventListener("click", () => {
+            document.getElementById("fileInput").click();
+        });
 
-document.getElementById("fileInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const content = event.target.result;
-    const parsedPlaylist = parsePlaylist(content);
-    if (parsedPlaylist.length > 0) {
-      playlistUrls = parsedPlaylist;
-      updateChannelList();
-      focusChannel();
-      showMessage(`✅ ${file.name} carregada (${parsedPlaylist.length} canais)`, 'success');
-    } else {
-      showMessage(`⚠️ Nenhum canal válido encontrado em ${file.name}`, 'error');
-    }
-  };
-  reader.readAsText(file);
-});
-
-	}
-
-    // MELHORIA 19: Inicialização otimizada e mais robusta
-    
-
-// [REMOVIDO SISTEMA DE BUSCA ANTIGO]
-
-
-
-
-
-
-
-// === SISTEMA DE BUSCA DE CANAIS (SMART TV FRIENDLY) ===
-
-
-
-
-
-
-
-// === BUSCA: Overlay com campo de texto (focável) ===
-
-
-function hideSearchOverlay() {
-    const overlay = document.getElementById("searchOverlay");
-    if (overlay) overlay.style.display = "none";
-    currentView = 'channels';
-    // Retorna foco ao botão de busca (se existir)
-    const trigger = document.querySelector(".category-header.search-trigger");
-    if (trigger) setFocusElement(trigger);
-}
-
-
-function initialize() {
-    // Verifica se há overlay salvo na URL
-    const params = new URLSearchParams(window.location.search);
-    const paramOverlay = params.get("overlay");
-    if (paramOverlay && typeof grouped !== "undefined" && grouped[paramOverlay]) {
-        showCategoryOverlay(paramOverlay, grouped[paramOverlay]);
+        document.getElementById("fileInput").addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target.result;
+                const parsedPlaylist = parsePlaylist(content);
+                if (parsedPlaylist.length > 0) {
+                    playlistUrls = parsedPlaylist;
+                    updateChannelList();
+                    focusChannel();
+                    showMessage(`✅ ${file.name} carregada (${parsedPlaylist.length} canais)`, 'success');
+                } else {
+                    showMessage(`⚠️ Nenhum canal válido encontrado em ${file.name}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+        });
     }
 
+    function initialize() {
         try {
-            console.log("🚀 M3U8 Player inicializado com melhorias e overlay de categorias");
+            console.log("🚀 M3U8 Player inicializado com player overlay nativo");
             
-            // Setup dos controles e listeners
             setupKeyboardControls();
             setupEventListeners();
             
-            // Foco inicial nos botões
             const buttons = document.querySelectorAll(".navigable");
             if (buttons.length) {
                 buttons[focusIndex].focus();
             }
             
-            // Verificar se está voltando do player
             if (!checkReturnFromPlayer()) {
-                // Inicialização limpa
                 playlistUrls = [];
                 lastPlayedChannelIndex = -1;
                 channelItems = [];
                 updateChannelList();
                 showMessage("💡 Selecione uma opção acima para começar", 'success');
-                console.log("🔄 Inicialização limpa - nenhuma playlist pré-carregada");
+                console.log("📄 Inicialização limpa - nenhuma playlist pré-carregada");
             } else {
-                console.log("🔄 Playlist restaurada após retorno do player");
+                console.log("📄 Playlist restaurada após retorno do player");
             }
             
             debugFocus('Inicialização');
@@ -1807,4 +1835,14 @@ function initialize() {
 
     // Executar inicialização
     initialize();
+    
+    // Expor playlist global
+    Object.defineProperty(window, "currentPlaylist", {
+        get() {
+            return playlistUrls;
+        },
+        configurable: true
+    });
+    
+    console.log("✅ M3U8 Player com overlay nativo carregado com sucesso");
 });
