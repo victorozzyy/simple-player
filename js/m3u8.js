@@ -1631,18 +1631,18 @@ if (savedState.name) {
 	  
 	  {
         name: "📥 Minha 02",
-        description: "Lista fixa configurada no código",
+        description: "Lista 02",
         url: "http://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
       }
 	  {
-        name: "📥 Minha 02",
-        description: "Lista fixa configurada no código",
+        name: "📥 Minha 03",
+        description: "Lista 03",
         url: "http://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
       }
 	  
 	  {
-        name: "📥 Minha Lista Principal",
-        description: "Lista 03",
+        name: "📥 Minha Lista 04",
+        description: "Lista 04",
         url: "http://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
       }
       // Adicione mais listas aqui se desejar
