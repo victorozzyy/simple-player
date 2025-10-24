@@ -201,22 +201,22 @@
       {
         name: "🔥 Minha Lista Principal",
         description: "Lista 01",
-        url: "https://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
+        url: "http://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
       },
       {
         name: "🔥 Minha 02",
         description: "Lista 02",
-        url: "https://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
+        url: "http://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
       },
       {
         name: "🔥 Minha 03",
         description: "Lista 03",
-        url: "https://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
+        url: "http://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
       },
       {
         name: "🔥 Minha Lista 04",
         description: "Lista 04",
-        url: "https://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
+        url: "http://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
       }
     ];
 
@@ -245,6 +245,10 @@
     // Validação de URL
     function isValidUrl(string) {
         try {
+            // Se não começar com http:// ou https://, adiciona https://
+            if (!string.startsWith('http://') && !string.startsWith('https://')) {
+                string = 'https://' + string;
+            }
             const url = new URL(string);
             return url.protocol === 'http:' || url.protocol === 'https:';
         } catch {
@@ -252,11 +256,23 @@
         }
     }
 
-    // Converte HTTP para HTTPS automaticamente
+    // Converte HTTP para HTTPS e adiciona protocolo se necessário
     function ensureHttps(url) {
-        if (typeof url === 'string' && url.startsWith('http://')) {
+        if (typeof url !== 'string') return url;
+        
+        // Remove espaços em branco
+        url = url.trim();
+        
+        // Se não tem protocolo, adiciona https://
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            return 'https://' + url;
+        }
+        
+        // Se tem http://, converte para https://
+        if (url.startsWith('http://')) {
             return url.replace('http://', 'https://');
         }
+        
         return url;
     }
 
@@ -529,6 +545,9 @@
 
     function openChannelInPlayer(url, name, index) {
         try {
+            // Converte HTTP para HTTPS
+            url = ensureHttps(url);
+            
             currentChannelIndex = index;
             lastPlayedChannelIndex = index;
 
@@ -1143,8 +1162,10 @@
                     }
                 } else if (line.startsWith("http")) {
                     if (isValidUrl(line)) {
+                        // Converte HTTP para HTTPS
+                        const secureUrl = ensureHttps(line);
                         parsed.push({
-                            url: line,
+                            url: secureUrl,
                             name: currentName || "Canal Desconhecido",
                             group: currentGroup || "Outros"
                         });
