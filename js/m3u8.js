@@ -1,4 +1,8 @@
-document.addEventListener("DOMContentLoaded", () => {
+}
+
+    function setupEventListeners() {
+        const btnLoadPlaylist = document.getElementById("btnLoadPlaylist");
+        if (btnLoadPlaylist) btnLoadPlaylist.addEventListener("click", showRemotePlaylistdocument.addEventListener("DOMContentLoaded", () => {
     
     // Helper: trata tecla OK/Enter de controles remotos (Tizen, WebOS, etc.)
     function isOKKey(e) {
@@ -15,8 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const video = document.getElementById("player");
     const channelList = document.getElementById("channelList");
-    const playlistSelector = document.getElementById("playlistSelector");
-    const playlistList = document.getElementById("playlistList");
     const remotePlaylistSelector = document.getElementById("remotePlaylistSelector");
     const remotePlaylistList = document.getElementById("remotePlaylistList");
     const messageArea = document.getElementById("messageArea");
@@ -24,17 +26,15 @@ document.addEventListener("DOMContentLoaded", () => {
     let lastPlayedChannelIndex = -1;
     let playlistUrls = [];
     let channelItems = [];
-    let playlistItems = [];
     let remotePlaylistItems = [];
     let currentFocusIndex = -1;
-    let playlistFocusIndex = -1;
     let remoteFocusIndex = -1;
     let focusIndex = 0;
     let currentView = 'buttons';
     let overlayChannels = [];
     let overlayFocusIndex = 0;
     let restoringState = false;
-    let hls = null; // Instância HLS.js
+    let hls = null;
     let currentChannelIndex = -1;
 
     // Lista de playlists remotas
@@ -196,40 +196,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     ];
 
-    // Lista de playlists locais
-    const availablePlaylists = [
-      { name: "24 Hs", filename: "playlist_24h.m3u" },
-      { name: "TV Misto", filename: "tvmisto.m3u8" },
-      { name: "Filmes e Series", filename: "filmes-series.m3u8" },
-      { name: "Filmes mp4 ", filename: "filmes.m3u8" },
-      { name: "Esportes", filename: "esportes.m3u8" },
-      { name: "Variedades", filename: "variedades.m3u8" },
-      { name: "Educativo", filename: "teste.m3u8" },
-      { name: "EducativoT", filename: "teste2.m3u8" },
-      { name: "Top", filename: "new.m3u8" },
-      { name: "Novo", filename: "novopono.m3u8" }
-    ];
-
+    // Minhas Listas Config
     const minhasListasConfig = [
       {
         name: "🔥 Minha Lista Principal",
         description: "Lista 01",
-        url: "http://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
+        url: "https://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
       },
       {
         name: "🔥 Minha 02",
         description: "Lista 02",
-        url: "http://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
+        url: "https://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
       },
       {
         name: "🔥 Minha 03",
         description: "Lista 03",
-        url: "http://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
+        url: "https://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
       },
       {
         name: "🔥 Minha Lista 04",
         description: "Lista 04",
-        url: "http://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
+        url: "https://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
       }
     ];
 
@@ -239,7 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
         lastAccessed: new Map()
     };
 
-    // Debounce para navegação mais fluida
+    // Debounce
     function debounce(func, delay) {
         let timeoutId;
         return function (...args) {
@@ -248,14 +235,14 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // Tratamento de erros mais robusto
+    // Tratamento de erros
     function handleError(error, context = 'Operação') {
         console.error(`[${context}] Erro:`, error);
         const userMessage = error.message || 'Erro desconhecido';
         showMessage(`❌ ${context}: ${userMessage}`, 'error');
     }
 
-    // Validação de URL mais rigorosa
+    // Validação de URL
     function isValidUrl(string) {
         try {
             const url = new URL(string);
@@ -265,7 +252,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Função para debug do foco
+    // Converte HTTP para HTTPS automaticamente
+    function ensureHttps(url) {
+        if (typeof url === 'string' && url.startsWith('http://')) {
+            return url.replace('http://', 'https://');
+        }
+        return url;
+    }
+
+    // Debug do foco
     function debugFocus(context) {
         if (console.debug) {
             console.debug(`[${context}]`, {
@@ -278,27 +273,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // ===== NOVO: SISTEMA DE PLAYER OVERLAY NATIVO =====
-    
+    // ===== SISTEMA DE PLAYER OVERLAY =====
     function createPlayerOverlay() {
         let overlay = document.getElementById("nativePlayerOverlay");
         if (overlay) return overlay;
-        
+
         overlay = document.createElement("div");
         overlay.id = "nativePlayerOverlay";
         overlay.style.cssText = `
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: #000;
             z-index: 10000;
             flex-direction: column;
+            outline: none;
         `;
-        
-        // Container do topo com info e controles
+        overlay.tabIndex = 0;
+
+        // Barra superior
         const topBar = document.createElement("div");
         topBar.id = "playerTopBar";
         topBar.style.cssText = `
@@ -313,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
             justify-content: space-between;
             align-items: center;
         `;
-        
+
         const channelInfo = document.createElement("div");
         channelInfo.id = "playerChannelInfo";
         channelInfo.style.cssText = `
@@ -321,10 +314,12 @@ document.addEventListener("DOMContentLoaded", () => {
             font-size: 1.5em;
             font-weight: bold;
         `;
-        
+
         const closeBtn = document.createElement("button");
         closeBtn.id = "playerCloseBtn";
         closeBtn.textContent = "✕ Fechar";
+        closeBtn.className = "navigable-player";
+        closeBtn.tabIndex = 0;
         closeBtn.style.cssText = `
             background: #ff4444;
             color: white;
@@ -336,188 +331,244 @@ document.addEventListener("DOMContentLoaded", () => {
             font-weight: bold;
         `;
         closeBtn.onclick = closePlayerOverlay;
-        
         topBar.appendChild(channelInfo);
         topBar.appendChild(closeBtn);
-        
-        // Vídeo player nativo
+
+        // Player de vídeo
         const videoPlayer = document.createElement("video");
         videoPlayer.id = "nativeVideoPlayer";
-        videoPlayer.controls = true;
+        videoPlayer.controls = false;
         videoPlayer.autoplay = true;
+        videoPlayer.tabIndex = 0;
         videoPlayer.style.cssText = `
             width: 100%;
             height: 100%;
             background: #000;
         `;
-        
-        // Botões de navegação (próximo canal)
+
+        // Barra inferior com botões
         const bottomBar = document.createElement("div");
         bottomBar.id = "playerBottomBar";
         bottomBar.style.cssText = `
             position: absolute;
-            bottom: 80px;
+            bottom: 120px;
             left: 0;
             right: 0;
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 40px;
             padding: 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
             z-index: 10001;
+            transition: opacity 0.5s ease;
         `;
-        
-        const prevBtn = document.createElement("button");
-        prevBtn.textContent = "⏮ Anterior";
-        prevBtn.className = "player-nav-btn";
-        prevBtn.style.cssText = `
-            background: #333;
-            color: white;
-            border: 2px solid #666;
-            padding: 15px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-        `;
-        prevBtn.onclick = () => playPreviousChannel();
-        
-        const nextBtn = document.createElement("button");
-        nextBtn.textContent = "⏭ Próximo";
-        nextBtn.className = "player-nav-btn";
-        nextBtn.style.cssText = `
-            background: #333;
-            color: white;
-            border: 2px solid #666;
-            padding: 15px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-        `;
-        nextBtn.onclick = () => playNextChannel();
-        
-        bottomBar.appendChild(prevBtn);
-        bottomBar.appendChild(nextBtn);
-        
-        overlay.appendChild(topBar);
-        overlay.appendChild(videoPlayer);
-        overlay.appendChild(bottomBar);
-        document.body.appendChild(overlay);
-        
-        // Eventos de teclado no overlay
-        overlay.addEventListener("keydown", handlePlayerKeydown);
-        
-        // Auto-avançar no fim do vídeo
-        videoPlayer.addEventListener("ended", () => {
-            console.log("🔄 Vídeo terminou, avançando para o próximo canal...");
-            playNextChannel();
+
+        function makeButton(label, action) {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            btn.className = "player-btn navigable-player";
+            btn.tabIndex = 0;
+            btn.onclick = action;
+            btn.style.cssText = `
+                background: #333;
+                color: white;
+                border: 2px solid #666;
+                padding: 15px 30px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s ease;
+            `;
+            btn.onfocus = () => (btn.style.borderColor = "#6bff6b");
+            btn.onblur = () => (btn.style.borderColor = "#666");
+            return btn;
+        }
+
+        const prevBtn = makeButton("⏮ Anterior", () => playPreviousChannel());
+        const playPauseBtn = makeButton("⏯ Pausar", () => {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                playPauseBtn.textContent = "⏸ Pausar";
+            } else {
+                videoPlayer.pause();
+                playPauseBtn.textContent = "▶️ Reproduzir";
+            }
         });
-        
-        return overlay;
-    }
-    
-    function handlePlayerKeydown(e) {
-        console.log("Tecla no player:", e.key);
-        
-        if (e.key === "Escape" || e.key === "Backspace" || e.keyCode === 10009) {
-            e.preventDefault();
-            closePlayerOverlay();
-        } else if (e.key === "ArrowRight" || e.keyCode === 39) {
-            e.preventDefault();
-            playNextChannel();
-        } else if (e.key === "ArrowLeft" || e.keyCode === 37) {
-            e.preventDefault();
-            playPreviousChannel();
-        } else if (isOKKey(e)) {
-            // OK no player pode pausar/play
-            const videoEl = document.getElementById("nativeVideoPlayer");
-            if (videoEl) {
-                if (videoEl.paused) {
-                    videoEl.play();
+        const nextBtn = makeButton("⏭ Próximo", () => playNextChannel());
+        const closeBottomBtn = makeButton("✕ Fechar", closePlayerOverlay);
+
+        bottomBar.append(prevBtn, playPauseBtn, nextBtn, closeBottomBtn);
+
+        // Barra de progresso
+        const progressBarContainer = document.createElement("div");
+        progressBarContainer.id = "playerProgressContainer";
+        progressBarContainer.style.cssText = `
+            position: absolute;
+            bottom: 40px;
+            left: 5%;
+            right: 5%;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 10002;
+            outline: none;
+        `;
+        progressBarContainer.tabIndex = 0;
+
+        const progressBarFill = document.createElement("div");
+        progressBarFill.id = "playerProgressFill";
+        progressBarFill.style.cssText = `
+            height: 100%;
+            width: 0%;
+            background: #6bff6b;
+            border-radius: 5px;
+            transition: width 0.2s linear;
+        `;
+        progressBarContainer.appendChild(progressBarFill);
+
+        overlay.append(topBar, videoPlayer, bottomBar, progressBarContainer);
+        document.body.appendChild(overlay);
+
+        // Atualiza progresso
+        videoPlayer.addEventListener("timeupdate", () => {
+            if (videoPlayer.duration) {
+                const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                progressBarFill.style.width = `${percent}%`;
+            }
+        });
+
+        // Controle da barra de progresso
+        progressBarContainer.addEventListener("keydown", (e) => {
+            if (["ArrowRight", "ArrowLeft"].includes(e.key)) {
+                e.preventDefault();
+                const step = videoPlayer.duration * 0.05;
+                videoPlayer.currentTime += e.key === "ArrowRight" ? step : -step;
+            } else if (isOKKey(e)) {
+                e.preventDefault();
+                if (videoPlayer.paused) {
+                    videoPlayer.play();
+                    playPauseBtn.textContent = "⏸ Pausar";
                 } else {
-                    videoEl.pause();
+                    videoPlayer.pause();
+                    playPauseBtn.textContent = "▶️ Reproduzir";
+                }
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                currentRow = "buttons";
+                playerButtons[focusIndex].focus();
+            } else if (e.key === "Backspace" || e.keyCode === 10009) {
+                e.preventDefault();
+                closePlayerOverlay();
+            }
+        });
+
+        // Sistema de foco TV-like
+        const playerButtons = [prevBtn, playPauseBtn, nextBtn, closeBottomBtn];
+        let focusIndex = 1;
+        let currentRow = "buttons";
+
+        function moveHorizontal(delta) {
+            if (currentRow === "buttons") {
+                focusIndex = (focusIndex + delta + playerButtons.length) % playerButtons.length;
+                playerButtons[focusIndex].focus();
+            }
+        }
+
+        overlay.addEventListener("keydown", (e) => {
+            if (currentRow === "buttons") {
+                if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    moveHorizontal(1);
+                } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    moveHorizontal(-1);
+                } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    currentRow = "progress";
+                    progressBarContainer.focus();
+                } else if (isOKKey(e)) {
+                    e.preventDefault();
+                    playerButtons[focusIndex].click();
+                } else if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
+                    e.preventDefault();
+                    closePlayerOverlay();
                 }
             }
-        }
+        });
+
+        // Ocultação automática
+        let hideTimeout;
+        const hideControls = () => {
+            bottomBar.style.opacity = "0";
+            topBar.style.opacity = "0";
+            progressBarContainer.style.opacity = "0";
+        };
+        const showControls = () => {
+            bottomBar.style.opacity = "1";
+            topBar.style.opacity = "1";
+            progressBarContainer.style.opacity = "1";
+            resetHideTimer();
+        };
+        const resetHideTimer = () => {
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(hideControls, 5000);
+        };
+        overlay.addEventListener("mousemove", showControls);
+        overlay.addEventListener("keydown", showControls);
+        resetHideTimer();
+
+        setTimeout(() => playPauseBtn.focus(), 200);
+
+        // Auto-avançar
+        videoPlayer.addEventListener("ended", () => playNextChannel());
+
+        return overlay;
     }
-    
-    function openChannelInPlayer(url, name, channelIndex = -1) {
+
+    function openChannelInPlayer(url, name, index) {
         try {
-            if (!isValidUrl(url)) {
-                throw new Error('URL do canal inválida');
+            currentChannelIndex = index;
+            lastPlayedChannelIndex = index;
+
+            const overlay = createPlayerOverlay();
+            const videoPlayer = overlay.querySelector("#nativeVideoPlayer");
+            const channelInfo = overlay.querySelector("#playerChannelInfo");
+
+            overlay.style.display = "flex";
+            channelInfo.textContent = name;
+            currentView = 'player';
+
+            if (url.endsWith(".m3u8")) {
+                if (window.Hls && Hls.isSupported()) {
+                    if (hls) {
+                        hls.destroy();
+                    }
+                    hls = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 90
+                    });
+                    hls.loadSource(url);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayer.play());
+                } else {
+                    videoPlayer.src = url;
+                    videoPlayer.play();
+                }
+            } else {
+                videoPlayer.src = url;
+                videoPlayer.play();
             }
 
-            console.log(`🎯 Abrindo canal no overlay: ${name}`, { url, channelIndex });
-            
-            const overlay = createPlayerOverlay();
-            const videoEl = document.getElementById("nativeVideoPlayer");
-            const infoEl = document.getElementById("playerChannelInfo");
-            
-            // Atualiza informações
-            currentChannelIndex = channelIndex;
-            lastPlayedChannelIndex = channelIndex;
-            infoEl.textContent = `📺 ${name}`;
-            
-            // Limpa HLS anterior
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            
-            // Detecta tipo de stream
-            const isM3U8 = url.toLowerCase().includes('.m3u8');
-            const isMP4 = url.toLowerCase().endsWith('.mp4');
-            
-            if (isM3U8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-                // Usar HLS.js para streams m3u8
-                hls = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 90
-                });
-                
-                hls.loadSource(url);
-                hls.attachMedia(videoEl);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    console.log("✅ Stream HLS carregado");
-                    videoEl.play().catch(err => {
-                        console.warn("Erro ao iniciar reprodução:", err);
-                    });
-                });
-                
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.error("Erro HLS:", data);
-                    if (data.fatal) {
-                        handleError(new Error(data.type), 'Reprodução HLS');
-                    }
-                });
-            } else if (videoEl.canPlayType('application/vnd.apple.mpegurl') || isMP4) {
-                // Suporte nativo (Safari, Smart TVs)
-                videoEl.src = url;
-                videoEl.play().catch(err => {
-                    console.warn("Erro ao iniciar reprodução nativa:", err);
-                });
-            } else {
-                throw new Error('Formato de vídeo não suportado');
-            }
-            
-            // Mostra overlay
-            overlay.style.display = "flex";
-            currentView = 'player';
-            
-            // Focar no overlay para capturar teclas
-            overlay.focus();
-            overlay.tabIndex = 0;
-            
-            showMessage(`▶️ Reproduzindo: ${name}`, 'success');
-            
-        } catch (error) {
-            handleError(error, 'Abertura do canal');
+            showMessage(`▶️ Reproduzindo: ${name}`, "info");
+        } catch (err) {
+            console.error("Erro ao abrir player:", err);
+            handleError(err, "Abertura do player");
         }
     }
-    
+
     function closePlayerOverlay() {
         const overlay = document.getElementById("nativePlayerOverlay");
         const videoEl = document.getElementById("nativeVideoPlayer");
@@ -538,7 +589,6 @@ document.addEventListener("DOMContentLoaded", () => {
         
         currentView = 'channels';
         
-        // Retorna foco para lista de canais
         setTimeout(() => {
             if (lastPlayedChannelIndex >= 0) {
                 focusLastPlayedChannel();
@@ -547,9 +597,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, 100);
         
-        console.log("⏹️ Player fechado");
+        console.log("ℹ️ Player fechado");
     }
-    
+
     function playNextChannel() {
         if (currentChannelIndex >= 0 && currentChannelIndex < playlistUrls.length - 1) {
             const nextIndex = currentChannelIndex + 1;
@@ -559,7 +609,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showMessage("🚫 Último canal da lista", 'info');
         }
     }
-    
+
     function playPreviousChannel() {
         if (currentChannelIndex > 0) {
             const prevIndex = currentChannelIndex - 1;
@@ -569,7 +619,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showMessage("🚫 Primeiro canal da lista", 'info');
         }
     }
-    
+
     function focusLastPlayedChannel() {
         if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
             const lastChannel = playlistUrls[lastPlayedChannelIndex];
@@ -587,10 +637,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
-    
-    // ===== FIM DO SISTEMA DE PLAYER OVERLAY =====
+    // ===== FIM PLAYER OVERLAY =====
 
-    // Navegação com categorias recolhíveis otimizada
+    // Navegação com categorias
     function getVisibleNavigableItems() {
         const headers = Array.from(document.querySelectorAll(".category-header"));
         
@@ -598,11 +647,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .filter(ul => ul.style.display === "block" || ul.style.display === "")
             .flatMap(ul => Array.from(ul.querySelectorAll(".channel-item")));
         
-        const allItems = [...headers, ...visibleChannels];
-        
-        console.log(`Itens navegáveis: ${allItems.length} (${headers.length} headers, ${visibleChannels.length} canais)`);
-        
-        return allItems;
+        return [...headers, ...visibleChannels];
     }
 
     function setFocusElement(el) {
@@ -616,46 +661,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         channelItems = getVisibleNavigableItems();
         currentFocusIndex = channelItems.indexOf(el);
-        
-        console.log(`Foco aplicado em: ${el.textContent?.substring(0, 50)} (índice: ${currentFocusIndex})`);
     }
 
-    function toggleCategory(headerEl, subListEl, focusFirstChannel = false) {
-        const isOpen = subListEl.style.display === "block";
-        
-        subListEl.style.display = isOpen ? "none" : "block";
-        headerEl.setAttribute("aria-expanded", (!isOpen).toString());
-
-        const label = headerEl.querySelector(".cat-label");
-        if (label) {
-            const groupName = headerEl.dataset.group;
-            label.textContent = (isOpen ? "▶ " : "▼ ") + groupName;
-        }
-
-        setTimeout(() => {
-            channelItems = getVisibleNavigableItems();
-            
-            if (!isOpen) {
-                if (focusFirstChannel) {
-                    const firstChannel = subListEl.querySelector(".channel-item");
-                    if (firstChannel) {
-                        setFocusElement(firstChannel);
-                    } else {
-                        setFocusElement(headerEl);
-                    }
-                } else {
-                    setFocusElement(headerEl);
-                }
-            } else {
-                const focusedElement = document.querySelector('.focused');
-                if (focusedElement && subListEl.contains(focusedElement)) {
-                    setFocusElement(headerEl);
-                }
-            }
-        }, 10);
-    }
-
-    // Overlay para mostrar canais por categoria
+    // Overlay de categorias
     function createOverlayElement() {
         let overlay = document.getElementById("channelOverlay");
         if (!overlay) {
@@ -882,20 +890,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return null;
     }
 
-    function savePlaylistState(playlistData, playlistName, playlistType) {
-        try {
-            const playlistState = {
-                urls: playlistData,
-                name: playlistName,
-                type: playlistType,
-                timestamp: Date.now(),
-                version: "1.1"
-            };
-        } catch (error) {
-            handleError(error, 'Salvamento de playlist');
-        }
-    }
-
     function showMessage(text, type = 'info') {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type === 'error' ? 'error-message' : 
@@ -916,45 +910,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function checkReturnFromPlayer() {
-        try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const returnFromPlayer = urlParams.get('return');
-            
-            if (returnFromPlayer === 'true') {
-                return restorePlaylistState();
-            }
-        } catch (error) {
-            handleError(error, 'Verificação de retorno');
-        }
-        return false;
-    }
-
-    function restorePlaylistState(currentChannelData) {
-        try {
-            if (!playlistUrls || playlistUrls.length === 0) return false;
-
-            restoringState = true;
-            updateChannelList();
-            hideAllSelectors();
-
-            if (lastPlayedChannelIndex >= 0 && lastPlayedChannelIndex < playlistUrls.length) {
-                focusLastPlayedChannel();
-            } else {
-                focusChannel();
-            }
-
-            showMessage(`✅ Playlist restaurada`, 'success');
-            return true;
-
-        } catch (error) {
-            handleError(error, 'Restauração de playlist');
-            return false;
-        } finally {
-            restoringState = false;
-        }
-    }
-
     function showRemotePlaylistSelector() {
         hideAllSelectors();
         remotePlaylistSelector.style.display = "block";
@@ -968,17 +923,6 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const fragment = document.createDocumentFragment();
             
-            const allHeader = document.createElement("li");
-            allHeader.className = "category-header";
-            allHeader.setAttribute("tabindex", "0");
-            allHeader.setAttribute("role", "button");
-            allHeader.setAttribute("aria-expanded", "false");
-            allHeader.dataset.group = "Todos os Canais";
-            allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
-            allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
-            allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
-            fragment.appendChild(allHeader);
-        
             const categories = [...new Set(remotePlaylistsConfig.map(p => p.category))];
             
             categories.forEach(category => {
@@ -1021,6 +965,52 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Minhas Listas
+    function showMinhasListasSelector() {
+        hideAllSelectors();
+        remotePlaylistSelector.style.display = "block";
+        updateMinhasListasList();
+        currentView = 'minhasListas';
+        
+        setTimeout(() => {
+            remotePlaylistItems = Array.from(document.querySelectorAll(".remote-playlist-item"));
+            if (remotePlaylistItems.length > 0) {
+                remoteFocusIndex = 0;
+                remotePlaylistItems[0].focus();
+                remotePlaylistItems[0].classList.add("focused");
+            }
+        }, 100);
+    }
+
+    function updateMinhasListasList() {
+        try {
+            const fragment = document.createDocumentFragment();
+            const header = document.createElement("li");
+            header.innerHTML = "<strong>🔥 Suas Listas Fixas:</strong>";
+            header.className = "section-header";
+            header.style.cssText = "color: #6bff6b; padding: 10px 0;";
+            fragment.appendChild(header);
+
+            minhasListasConfig.forEach(playlist => {
+                const li = document.createElement("li");
+                li.className = "remote-playlist-item";
+                li.setAttribute("tabindex", "0");
+                li.dataset.url = playlist.url;
+                li.dataset.name = playlist.name;
+                li.innerHTML = `<div><strong>${playlist.name}</strong></div>
+                                <div style='font-size:0.9em;color:#ccc;margin-left:10px;'>${playlist.description}</div>`;
+                li.onclick = () => loadRemotePlaylist(playlist.url, playlist.name);
+                fragment.appendChild(li);
+            });
+
+            remotePlaylistList.innerHTML = "";
+            remotePlaylistList.appendChild(fragment);
+            showMessage(`🔥 ${minhasListasConfig.length} listas fixas disponíveis`, 'success');
+        } catch (error) {
+            handleError(error, 'Atualização de Minhas Listas');
+        }
+    }
+
     async function loadRemotePlaylist(url, name) {
         try {
             if (!isValidUrl(url)) {
@@ -1031,8 +1021,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (cached) {
                 console.log('📦 Usando playlist em cache:', name);
                 playlistUrls = cached;
-                playlistUrls.forEach((c, i) => c.tempId = i);
-                savePlaylistState(playlistUrls, name, 'remote');
                 updateChannelList();
                 hideAllSelectors();
                 focusChannel();
@@ -1066,8 +1054,6 @@ document.addEventListener("DOMContentLoaded", () => {
             cachePlaylist(url, parsedPlaylist);
             
             playlistUrls = parsedPlaylist;
-            playlistUrls.forEach((c, i) => c.tempId = i);
-            savePlaylistState(playlistUrls, name, 'remote');
             updateChannelList();
             hideAllSelectors();
             focusChannel();
@@ -1082,60 +1068,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function detectAvailablePlaylists() {
-        showMessage("🔍 Verificando playlists disponíveis...", 'loading');
-        
-        try {
-            const promises = availablePlaylists.map(async playlist => {
-                try {
-                    const response = await fetch(`playlists/${playlist.filename}`, { 
-                        method: 'HEAD',
-                        cache: 'no-cache',
-                        signal: AbortSignal.timeout(5000)
-                    });
-                    
-                    return {
-                        ...playlist,
-                        available: response.ok,
-                        size: response.headers.get('content-length') || 'Desconhecido'
-                    };
-                } catch (error) {
-                    return { ...playlist, available: false };
-                }
-            });
-            
-            const results = await Promise.allSettled(promises);
-            return results.map(result => 
-                result.status === 'fulfilled' ? result.value : 
-                { ...availablePlaylists[results.indexOf(result)], available: false }
-            );
-            
-        } catch (error) {
-            handleError(error, 'Detecção de playlists');
-            return availablePlaylists.map(p => ({ ...p, available: false }));
-        }
-    }
-
-    async function showPlaylistSelector() {
-        hideAllSelectors();
-        playlistSelector.style.display = "block";
-        
-        playlistList.innerHTML = "<li class='loading'>📄 Detectando playlists disponíveis...</li>";
-        
-        try {
-            const detectedPlaylists = await detectAvailablePlaylists();
-            updatePlaylistList(detectedPlaylists);
-        } catch (error) {
-            updatePlaylistList(availablePlaylists.map(p => ({ ...p, available: false })));
-            showMessage("⚠️ Erro ao detectar playlists", 'error');
-        }
-        
-        currentView = 'playlists';
-        setTimeout(() => focusFirstPlaylist(), 100);
-    }
-
     function hideAllSelectors() {
-        playlistSelector.style.display = "none";
         remotePlaylistSelector.style.display = "none";
         hideChannelFocus();
     }
@@ -1150,219 +1083,31 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function updatePlaylistList(playlists) {
-        try {
-            const fragment = document.createDocumentFragment();
-            
-            const allHeader = document.createElement("li");
-            allHeader.className = "category-header";
-            allHeader.setAttribute("tabindex", "0");
-            allHeader.setAttribute("role", "button");
-            allHeader.setAttribute("aria-expanded", "false");
-            allHeader.dataset.group = "Todos os Canais";
-            allHeader.innerHTML = `<strong class="cat-label">📺 Todos os Canais (${playlistUrls.length})</strong>`;
-            allHeader.style.cssText = "color: #ffeb3b; padding: 15px 10px; border-bottom: 2px solid #333; cursor: pointer; background: linear-gradient(45deg, #333, #555); border-radius: 5px; margin-bottom: 5px;";
-            allHeader.onclick = () => showCategoryOverlay("Todos os Canais", playlistUrls);
-            fragment.appendChild(allHeader);
-            
-            const manualLi = document.createElement("li");
-            manualLi.textContent = "✏️ Digite nome do arquivo manualmente";
-            manualLi.className = "playlist-item manual-input";
-            manualLi.setAttribute("tabindex", "0");
-            manualLi.onclick = () => {
-                const filename = prompt("Digite o nome do arquivo da playlist (ex: minha-playlist.m3u8):");
-                if (filename?.trim()) {
-                    loadPlaylistFromFile(filename.trim());
+    // Upload de arquivo
+    function handleFileUpload() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.m3u,.m3u8';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target.result;
+                const parsedPlaylist = parsePlaylist(content);
+                if (parsedPlaylist.length > 0) {
+                    playlistUrls = parsedPlaylist;
+                    updateChannelList();
+                    hideAllSelectors();
+                    focusChannel();
+                    showMessage(`✅ ${file.name} carregada (${parsedPlaylist.length} canais)`, 'success');
+                } else {
+                    showMessage(`⚠️ Nenhum canal válido encontrado em ${file.name}`, 'error');
                 }
             };
-            fragment.appendChild(manualLi);
-            
-            const availablePlaylist = playlists.filter(p => p.available);
-            const unavailablePlaylist = playlists.filter(p => !p.available);
-            
-            if (availablePlaylist.length > 0) {
-                const headerLi = document.createElement("li");
-                headerLi.innerHTML = "<strong>📂 Disponíveis:</strong>";
-                headerLi.className = "section-header";
-                headerLi.style.cssText = "color: #6bff6b; padding: 5px 0;";
-                fragment.appendChild(headerLi);
-                
-                availablePlaylist.forEach(playlist => {
-                    const li = document.createElement("li");
-                    li.textContent = `✅ ${playlist.name} (${playlist.filename})`;
-                    li.className = "playlist-item available-playlist";
-                    li.setAttribute("tabindex", "0");
-                    li.dataset.filename = playlist.filename;
-                    li.onclick = () => loadPlaylistFromFile(playlist.filename);
-                    fragment.appendChild(li);
-                });
-            }
-            
-            if (unavailablePlaylist.length > 0) {
-                const headerLi = document.createElement("li");
-                headerLi.innerHTML = "<strong>🔒 Indisponíveis:</strong>";
-                headerLi.className = "section-header";
-                headerLi.style.cssText = "color: #ff6b6b; padding: 5px 0;";
-                fragment.appendChild(headerLi);
-                
-                unavailablePlaylist.forEach(playlist => {
-                    const li = document.createElement("li");
-                    li.textContent = `❌ ${playlist.name} (${playlist.filename})`;
-                    li.className = "playlist-item unavailable-playlist";
-                    li.setAttribute("tabindex", "0");
-                    li.dataset.filename = playlist.filename;
-                    li.onclick = () => {
-                        if (confirm(`Arquivo ${playlist.filename} não encontrado. Tentar carregar mesmo assim?`)) {
-                            loadPlaylistFromFile(playlist.filename);
-                        }
-                    };
-                    fragment.appendChild(li);
-                });
-            }
-            
-            playlistList.innerHTML = "";
-            playlistList.appendChild(fragment);
-            
-            playlistItems = Array.from(document.querySelectorAll(".playlist-item"));
-            
-            const totalAvailable = availablePlaylist.length;
-            const totalFiles = playlists.length;
-            showMessage(`📊 ${totalAvailable} de ${totalFiles} playlists encontradas`, 'success');
-            
-        } catch (error) {
-            handleError(error, 'Atualização da lista de playlists');
-        }
-    }
-
-    async function loadPlaylistFromFile(filename) {
-        try {
-            if (!filename) {
-                throw new Error('Nome do arquivo não fornecido');
-            }
-
-            const cacheKey = `local_${filename}`;
-            const cached = getCachedPlaylist(cacheKey);
-            
-            if (cached) {
-                console.log('📦 Usando playlist local em cache:', filename);
-                playlistUrls = cached;
-                playlistUrls.forEach((c, i) => c.tempId = i);
-                savePlaylistState(playlistUrls, filename, 'local');
-                updateChannelList();
-                hideAllSelectors();
-                focusChannel();
-                showMessage(`✅ ${filename} carregada do cache com ${playlistUrls.length} canais`, 'success');
-                return;
-            }
-
-            showMessage(`📄 Carregando ${filename}...`, 'loading');
-            
-            const response = await fetch(`playlists/${filename}`, {
-                cache: 'no-cache',
-                signal: AbortSignal.timeout(8000)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Playlist ${filename} não encontrada (${response.status})`);
-            }
-            
-            const data = await response.text();
-            const parsedPlaylist = parsePlaylist(data);
-            
-            if (parsedPlaylist.length === 0) {
-                throw new Error('Playlist vazia ou formato inválido');
-            }
-            
-            cachePlaylist(cacheKey, parsedPlaylist);
-            
-            playlistUrls = parsedPlaylist;
-            playlistUrls.forEach((c, i) => c.tempId = i);
-            savePlaylistState(playlistUrls, filename, 'local');
-            updateChannelList();
-            hideAllSelectors();
-            focusChannel();
-            showMessage(`✅ ${filename} carregada com ${playlistUrls.length} canais`, 'success');
-            
-        } catch (error) {
-            handleError(error, `Carregamento de ${filename}`);
-        }
-    }
-
-    async function loadFromUrl() {
-        try {
-            const url = prompt("Digite a URL da playlist (.m3u8):");
-            if (!url?.trim()) return;
-            
-            const trimmedUrl = url.trim();
-            if (!isValidUrl(trimmedUrl)) {
-                throw new Error('URL inválida. Use http:// ou https://');
-            }
-
-            const cached = getCachedPlaylist(trimmedUrl);
-            if (cached) {
-                console.log('📦 Usando playlist de URL em cache');
-                playlistUrls = cached;
-                playlistUrls.forEach((c, i) => c.tempId = i);
-                savePlaylistState(playlistUrls, `URL: ${trimmedUrl}`, 'url');
-                updateChannelList();
-                hideAllSelectors();
-                focusChannel();
-                showMessage(`✅ Playlist carregada do cache com ${playlistUrls.length} canais`, 'success');
-                return;
-            }
-
-            showMessage("📄 Carregando playlist de URL...", 'loading');
-            
-            const response = await fetch(trimmedUrl, {
-                signal: AbortSignal.timeout(10000)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`URL inválida (${response.status})`);
-            }
-            
-            const data = await response.text();
-            const parsedPlaylist = parsePlaylist(data);
-            
-            if (parsedPlaylist.length === 0) {
-                throw new Error('Playlist vazia ou formato inválido');
-            }
-            
-            cachePlaylist(trimmedUrl, parsedPlaylist);
-            
-            playlistUrls = parsedPlaylist;
-            playlistUrls.forEach((c, i) => c.tempId = i);
-            savePlaylistState(playlistUrls, `URL: ${trimmedUrl}`, 'url');
-            updateChannelList();
-            hideAllSelectors();
-            focusChannel();
-            showMessage(`✅ Playlist carregada com ${playlistUrls.length} canais`, 'success');
-            
-        } catch (error) {
-            handleError(error, 'Carregamento por URL');
-        }
-    }
-
-    function loadSingleChannel() {
-        try {
-            const url = prompt("Digite a URL do canal (.m3u8 ou .mp4):");
-            if (!url?.trim()) return;
-            
-            const trimmedUrl = url.trim();
-            if (!isValidUrl(trimmedUrl)) {
-                throw new Error('URL inválida. Use http:// ou https://');
-            }
-            
-            playlistUrls = [{ url: trimmedUrl, name: "Canal Único", group: "Único" }];
-            savePlaylistState(playlistUrls, "Canal Único", 'single');
-            updateChannelList();
-            hideAllSelectors();
-            focusChannel();
-            showMessage("✅ Canal único carregado", 'success');
-            
-        } catch (error) {
-            handleError(error, 'Canal único');
-        }
+            reader.readAsText(file);
+        };
+        input.click();
     }
 
     function parsePlaylist(content) {
@@ -1411,7 +1156,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             console.log(`📋 Playlist parseada: ${parsed.length} canais encontrados`);
-            parsed.forEach((c, i) => c.tempId = i);
             return parsed;
             
         } catch (error) {
@@ -1518,10 +1262,6 @@ document.addEventListener("DOMContentLoaded", () => {
             
             setFocusElement(channelItems[currentFocusIndex]);
             
-            if (lastPlayedChannelIndex >= 0 && playlistUrls[lastPlayedChannelIndex]) {
-                showMessage(`Voltando à categoria: ${playlistUrls[lastPlayedChannelIndex].group}`, 'info');
-            }
-            
             debugFocus('focusChannel');
             
         } catch (error) {
@@ -1531,17 +1271,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function focusChannel(index = 0) {
         debouncedFocusChannel(index);
-    }
-
-    function focusFirstPlaylist() {
-        setTimeout(() => {
-            if (playlistItems.length) {
-                playlistFocusIndex = 0;
-                const firstItem = playlistItems[0];
-                firstItem.focus();
-                firstItem.classList.add("focused");
-            }
-        }, 100);
     }
 
     function focusFirstRemotePlaylist() {
@@ -1584,18 +1313,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (currentView === 'playlists' && playlistItems.length) {
-            if (playlistFocusIndex >= 0) {
-                playlistItems[playlistFocusIndex]?.classList.remove("focused");
-            }
-            playlistFocusIndex = (playlistFocusIndex + delta + playlistItems.length) % playlistItems.length;
-            const item = playlistItems[playlistFocusIndex];
-            if (item) {
-                item.focus();
-                item.classList.add("focused");
-                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        } else if (currentView === 'remote' && remotePlaylistItems.length) {
+        if ((currentView === 'remote' || currentView === 'minhasListas') && remotePlaylistItems.length) {
             if (remoteFocusIndex >= 0) {
                 remotePlaylistItems[remoteFocusIndex]?.classList.remove("focused");
             }
@@ -1619,7 +1337,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Controles específicos para player overlay
             if (currentView === 'player') {
-                return; // Já tratado em handlePlayerKeydown
+                return; // Já tratado no overlay do player
             }
             
             // Controles específicos para overlay de categorias
@@ -1660,7 +1378,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             // Navegação vertical nas listas
-            if (['channels', 'playlists', 'remote'].includes(currentView)) {
+            if (['channels', 'remote', 'minhasListas'].includes(currentView)) {
                 if (e.key === "ArrowDown") {
                     e.preventDefault();
                     moveFocus(1);
@@ -1679,7 +1397,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const active = document.activeElement;
                 
                 const clickableElements = [
-                    'channel-item', 'playlist-item', 'remote-playlist-item', 
+                    'channel-item', 'remote-playlist-item', 
                     'navigable', 'category-header'
                 ];
                 
@@ -1692,7 +1410,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Backspace para voltar
             if (e.key === "Backspace" || e.keyCode === 10009) {
                 e.preventDefault();
-                if (['playlists', 'remote'].includes(currentView)) {
+                if (['remote', 'minhasListas'].includes(currentView)) {
                     backToButtons();
                 } else if (currentView === 'channels') {
                     hideChannelFocus();
@@ -1720,92 +1438,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 buttons[focusIndex].focus();
             }
         });
-    }
-
-    function showMinhasListasSelector() {
-        hideAllSelectors();
-        remotePlaylistSelector.style.display = "block";
-        updateMinhasListasList();
-        currentView = 'minhasListas';
-        setTimeout(() => focusFirstRemotePlaylist(), 100);
-    }
-
-    function updateMinhasListasList() {
-        try {
-            const fragment = document.createDocumentFragment();
-            const header = document.createElement("li");
-            header.innerHTML = "<strong>🔥 Suas Listas Fixas:</strong>";
-            header.className = "section-header";
-            header.style.cssText = "color: #6bff6b; padding: 10px 0;";
-            fragment.appendChild(header);
-
-            minhasListasConfig.forEach(playlist => {
-                const li = document.createElement("li");
-                li.className = "remote-playlist-item";
-                li.setAttribute("tabindex", "0");
-                li.dataset.url = playlist.url;
-                li.dataset.name = playlist.name;
-                li.innerHTML = `<div><strong>${playlist.name}</strong></div>
-                                <div style='font-size:0.9em;color:#ccc;margin-left:10px;'>${playlist.description}</div>`;
-                li.onclick = () => loadRemotePlaylist(playlist.url, playlist.name);
-                fragment.appendChild(li);
-            });
-
-            remotePlaylistList.innerHTML = "";
-            remotePlaylistList.appendChild(fragment);
-            remotePlaylistItems = Array.from(document.querySelectorAll(".remote-playlist-item"));
-            showMessage(`🔥 ${minhasListasConfig.length} listas fixas disponíveis`, 'success');
-        } catch (error) {
-            handleError(error, 'Atualização de Minhas Listas');
-        }
-    }
-
     function setupEventListeners() {
-        const btnHome = document.getElementById("btnHome");
-        if (btnHome) btnHome.addEventListener("click", () => {
-            if (confirm("Voltar para a página inicial?")) {
-                location.href = "index.html";
-            }
-        });
+        const btnLoadPlaylist = document.getElementById("btnLoadPlaylist");
+        if (btnLoadPlaylist) btnLoadPlaylist.addEventListener("click", showRemotePlaylistSelector);
         
-        document.getElementById("btnLoadPlaylist").addEventListener("click", showRemotePlaylistSelector);
-        document.getElementById("btnMinhasListas").addEventListener("click", showMinhasListasSelector);
-        const btnLocal = document.getElementById("btnLocal");
-        if (btnLocal) btnLocal.addEventListener("click", showPlaylistSelector);
-        document.getElementById("btnUrl").addEventListener("click", loadFromUrl);
-        const btnSingle = document.getElementById("btnSingle");
-        if (btnSingle) btnSingle.addEventListener("click", loadSingleChannel);
+        const btnMinhasListas = document.getElementById("btnMinhasListas");
+        if (btnMinhasListas) btnMinhasListas.addEventListener("click", showMinhasListasSelector);
         
-        document.getElementById("btnBackFromRemote").addEventListener("click", backToButtons);
-        document.getElementById("btnBackFromLocal").addEventListener("click", backToButtons);
+        const btnUpload = document.getElementById("btnUpload");
+        if (btnUpload) btnUpload.addEventListener("click", handleFileUpload);
         
-        document.getElementById("btnUpload").addEventListener("click", () => {
-            document.getElementById("fileInput").click();
-        });
-
-        document.getElementById("fileInput").addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const content = event.target.result;
-                const parsedPlaylist = parsePlaylist(content);
-                if (parsedPlaylist.length > 0) {
-                    playlistUrls = parsedPlaylist;
-                    updateChannelList();
-                    focusChannel();
-                    showMessage(`✅ ${file.name} carregada (${parsedPlaylist.length} canais)`, 'success');
-                } else {
-                    showMessage(`⚠️ Nenhum canal válido encontrado em ${file.name}`, 'error');
-                }
-            };
-            reader.readAsText(file);
-        });
+        const btnBackFromRemote = document.getElementById("btnBackFromRemote");
+        if (btnBackFromRemote) btnBackFromRemote.addEventListener("click", backToButtons);
     }
 
     function initialize() {
         try {
-            console.log("🚀 M3U8 Player inicializado com player overlay nativo");
+            console.log("🚀 M3U8 Player inicializado com player overlay integrado");
             
             setupKeyboardControls();
             setupEventListeners();
@@ -1815,16 +1464,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 buttons[focusIndex].focus();
             }
             
-            if (!checkReturnFromPlayer()) {
-                playlistUrls = [];
-                lastPlayedChannelIndex = -1;
-                channelItems = [];
-                updateChannelList();
-                showMessage("💡 Selecione uma opção acima para começar", 'success');
-                console.log("📄 Inicialização limpa - nenhuma playlist pré-carregada");
-            } else {
-                console.log("📄 Playlist restaurada após retorno do player");
-            }
+            playlistUrls = [];
+            lastPlayedChannelIndex = -1;
+            channelItems = [];
+            updateChannelList();
+            showMessage("💡 Selecione uma opção acima para começar", 'success');
+            console.log("📄 Inicialização limpa - nenhuma playlist pré-carregada");
             
             debugFocus('Inicialização');
             
@@ -1836,13 +1481,59 @@ document.addEventListener("DOMContentLoaded", () => {
     // Executar inicialização
     initialize();
     
-    // Expor playlist global
-    Object.defineProperty(window, "currentPlaylist", {
-        get() {
-            return playlistUrls;
-        },
-        configurable: true
-    });
+    console.log("✅ M3U8 Player com overlay nativo carregado com sucesso");
+});Selector);
+        
+        const btnMinhasListas = document.getElementById("btnMinhasListas");
+        if (btnMinhasListas) btnMinhasListas.addEventListener("click", showMinhasListasSelector);
+        
+        const btnLocal = document.getElementById("btnLocal");
+        if (btnLocal) btnLocal.addEventListener("click", showPlaylistSelector);
+        
+        const btnUrl = document.getElementById("btnUrl");
+        if (btnUrl) btnUrl.addEventListener("click", loadFromUrl);
+        
+        const btnSingle = document.getElementById("btnSingle");
+        if (btnSingle) btnSingle.addEventListener("click", loadSingleChannel);
+        
+        const btnUpload = document.getElementById("btnUpload");
+        if (btnUpload) btnUpload.addEventListener("click", handleFileUpload);
+        
+        const btnBackFromRemote = document.getElementById("btnBackFromRemote");
+        if (btnBackFromRemote) btnBackFromRemote.addEventListener("click", backToButtons);
+        
+        const btnBackFromLocal = document.getElementById("btnBackFromLocal");
+        if (btnBackFromLocal) btnBackFromLocal.addEventListener("click", backToButtons);
+    }
+
+    function initialize() {
+        try {
+            console.log("🚀 M3U8 Player inicializado com player overlay integrado");
+            
+            setupKeyboardControls();
+            setupEventListeners();
+            
+            const buttons = document.querySelectorAll(".navigable");
+            if (buttons.length) {
+                buttons[focusIndex].focus();
+            }
+            
+            playlistUrls = [];
+            lastPlayedChannelIndex = -1;
+            channelItems = [];
+            updateChannelList();
+            showMessage("💡 Selecione uma opção acima para começar", 'success');
+            console.log("📄 Inicialização limpa - nenhuma playlist pré-carregada");
+            
+            debugFocus('Inicialização');
+            
+        } catch (error) {
+            handleError(error, 'Inicialização');
+        }
+    }
+
+    // Executar inicialização
+    initialize();
     
     console.log("✅ M3U8 Player com overlay nativo carregado com sucesso");
 });
