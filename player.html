@@ -2,259 +2,449 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Player Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Player</title>
   <style>
-    html, body { height: 100%; margin: 0; background: #000; }
-    #video { width: 100%; height: 100%; background: #000; display: block; }
-    #channelOverlay {
-      position: absolute; top: 10px; left: 0; right: 0;
-      text-align: center; color: #fff; font-size: 22px;
-      background: rgba(0,0,0,0.5); padding: 10px;
-      transition: opacity 0.5s ease;
-      opacity: 1;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      height: 100%; 
+      background: #000; 
+      color: #fff;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
     }
-    #nextBtn {
-      margin-left: 20px; padding: 5px 10px;
-      background: #6bff6b; border: none; border-radius: 5px;
+    
+    #video { 
+      width: 100%; 
+      height: 100%; 
+      background: #000; 
+      display: block;
+    }
+    
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: rgba(0,0,0,0.8);
+      padding: 15px 20px;
+      border-radius: 10px;
+      transition: opacity 0.5s ease;
+      z-index: 100;
+    }
+    
+    #controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    button {
+      background: #333;
+      color: white;
+      border: 2px solid transparent;
+      padding: 10px 15px;
+      border-radius: 5px;
       cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    
+    button:hover {
+      background: #555;
+      border-color: #6bff6b;
+    }
+    
+    button:focus {
+      outline: none;
+      border-color: #6bff6b;
+      background: #555;
+    }
+    
+    button.close {
+      background: #c00;
+    }
+    
+    button.close:hover {
+      background: #e00;
+    }
+    
+    #channelInfo {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #6bff6b;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: bold;
+      transition: opacity 0.5s ease;
+      z-index: 100;
+      text-align: center;
+      max-width: 80%;
+    }
+    
+    #channelInfo.hidden {
+      opacity: 0;
+    }
+    
+    #clock {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+      z-index: 100;
+    }
+    
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9);
+      padding: 30px 40px;
+      border-radius: 10px;
+      font-size: 24px;
+      color: #6bff6b;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #333;
+      border-top-color: #6bff6b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <video id="video" controls autoplay playsinline></video>
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Player</title>
-<style>
-  html,body{height:100%;margin:0;background:#000;color:#fff}
-  #video{width:100%;height:100%;background:#000;display:block}
-  #channelOverlay{position:absolute;left:0;right:0;top:8px;text-align:center;color:#fff}
-  #channelTitle{font-size:20px}
-  #nextBtn{position:absolute;right:16px;top:8px}
-</style>
-</head>
-<body>
-  <video id="video" controls autoplay playsinline></video>
-  <div id="channelOverlay"><span id="channelTitle"></span><button id="nextBtn">⏭</button></div>
-  <span id="clock" style="position:absolute;right:12px;bottom:12px;font-family:monospace"></span>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    (function(){
-      const params = new URLSearchParams(window.location.search);
-      const url = params.get("url") || "";
-      const name = params.get("name") || "";
-      const video = document.getElementById("video");
-      const titleEl = document.getElementById("channelTitle");
-      const nextBtn = document.getElementById("nextBtn");
-
-      function showOverlay(ms){ const o = document.getElementById("channelOverlay"); if(!o) return; o.style.opacity="1"; if(showOverlay._t) clearTimeout(showOverlay._t); if(ms>0) showOverlay._t = setTimeout(()=> o.style.opacity="0", ms); }
-
-      function loadChannelDirect(u, n){
-        titleEl.textContent = n || u;
-        showOverlay(3000);
-        if (!u) return;
-        if (u.toLowerCase().endsWith(".m3u8")) {
-          if (window.Hls && Hls.isSupported()) {
-            if (window.hls) window.hls.destroy();
-            window.hls = new Hls();
-            window.hls.loadSource(u);
-            window.hls.attachMedia(video);
-          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = u;
-          }
-        } else {
-          video.src = u;
-        }
-        video.play().catch(err => console.warn("Autoplay:", err));
-      }
-
-      // init
-      loadChannelDirect(url, name);
-
-      // next button: just hides (no playlist)
-      nextBtn.addEventListener("click", () => { /* no-op: playlist-less player */ });
-
-      // close tab on Backspace / Escape / remote back key
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
-          e.preventDefault();
-          try { window.close(); } catch(err) { /* some browsers block close() for non-window.open tabs */ }
-        }
-      });
-
-      // simple clock
-      function updateClock(){ const now = new Date(); const h = String(now.getHours()).padStart(2,"0"); const m = String(now.getMinutes()).padStart(2,"0"); const s = String(now.getSeconds()).padStart(2,"0"); document.getElementById("clock").textContent = h+":"+m+":"+s; }
-      setInterval(updateClock,1000); updateClock();
-    })();
-  </script>
-</body>
-</html>
-
-  <div id="channelOverlay">
-    <span id="channelTitle"></span>
-    <button id="nextBtn">⏭ Próximo Canal</button>
+  <video id="video" controls playsinline></video>
+  
+  <div id="channelInfo">📺 Carregando...</div>
+  <div id="clock">00:00:00</div>
+  <div id="loading">⏳ Carregando canal...<span class="spinner"></span></div>
+  
+  <div id="controls">
+    <button id="playPauseBtn" title="Play/Pause">▶️ Play</button>
+    <button id="rewBtn" title="Retroceder 10s">⪪ -10s</button>
+    <button id="fwdBtn" title="Avançar 10s">⩩ +10s</button>
+    <button id="reloadBtn" title="Recarregar">🔄 Reload</button>
+    <button id="closeBtn" class="close" title="Fechar">✖ Fechar</button>
   </div>
-<span id="channelTitle"></span>
-<button id="nextBtn">⏭ Próximo Canal</button>
-<span id="clock" style="float:right; margin-right:15px; font-family:monospace;"></span>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
+    // ==================== CONFIGURAÇÃO ====================
     const video = document.getElementById('video');
-    const overlay = document.getElementById('channelOverlay');
-    const titleEl = document.getElementById('channelTitle');
-    const nextBtn = document.getElementById('nextBtn');
-
+    const channelInfo = document.getElementById('channelInfo');
+    const controls = document.getElementById('controls');
+    const loading = document.getElementById('loading');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    
     const params = new URLSearchParams(window.location.search);
-    let index = parseInt(params.get("index") || "0");
-
-    function showOverlay(ms = 3000) {
-      overlay.style.opacity = "1";
-      if (showOverlay._t) clearTimeout(showOverlay._t);
-      if (ms > 0) {
-        showOverlay._t = setTimeout(() => overlay.style.opacity = "0", ms);
+    const url = params.get('url') || '';
+    const name = params.get('name') || 'Canal';
+    const index = parseInt(params.get('index') || '0');
+    
+    let hls = null;
+    let hideControlsTimeout = null;
+    
+    // ==================== FUNÇÕES PRINCIPAIS ====================
+    
+    function showLoading(show = true) {
+      loading.style.display = show ? 'block' : 'none';
+    }
+    
+    function showControls(duration = 4000) {
+      controls.classList.remove('hidden');
+      channelInfo.classList.remove('hidden');
+      
+      clearTimeout(hideControlsTimeout);
+      if (duration > 0) {
+        hideControlsTimeout = setTimeout(() => {
+          controls.classList.add('hidden');
+          channelInfo.classList.add('hidden');
+        }, duration);
       }
     }
-
     
-    function loadChannel(i) {
-      // Lê params da URL e tenta obter playlist compactada via `data` (base64 JSON)
-      const params_local = new URLSearchParams(window.location.search);
-      const dataParam = params_local.get("data");
-      let playlist = [];
-      try {
-        if (dataParam) {
-          // decodeURIComponent + atob podem lançar se estiverem corrompidos
-          playlist = JSON.parse(atob(decodeURIComponent(dataParam)));
-          if (!Array.isArray(playlist)) playlist = [];
-        }
-      } catch (err) {
-        console.warn("⚠️ Falha ao decodificar playlist passada por URL:", err);
-        playlist = [];
-      }
-
-      // Determina canal a partir do índice (i) ou fallback para url/name individuais
-      let ch = null;
-      if (Array.isArray(playlist) && Number.isInteger(i) && i >= 0 && playlist[i] && playlist[i].url) {
-        ch = playlist[i];
-      } else {
-        const urlParam = params_local.get("url");
-        const nameParam = params_local.get("name");
-        if (urlParam) {
-          ch = { url: urlParam, name: nameParam || urlParam };
-        }
-      }
-
-      if (!ch || !ch.url) {
-        console.warn("Nenhum canal válido para carregar.");
+    function updateChannelInfo() {
+      channelInfo.textContent = `📺 ${name}`;
+    }
+    
+    function loadChannel() {
+      if (!url) {
+        alert('❌ URL do canal não fornecida');
         return;
       }
-
-      index = (Number.isInteger(i) && i >= 0) ? i : 0;
-      titleEl.textContent = ch.name || ch.url || ("Canal " + index);
-      showOverlay(3000);
-
+      
+      showLoading(true);
+      updateChannelInfo();
+      console.log('🎬 Carregando canal:', name, url);
+      
+      // Detecta HTTPS com IP direto e converte para HTTP
+      let finalUrl = url;
+      if (/^https:\/\/\d+\.\d+\.\d+\.\d+/.test(url)) {
+        console.warn('⚠️ HTTPS com IP detectado, convertendo para HTTP');
+        finalUrl = url.replace('https://', 'http://');
+      }
+      
       try {
-        if (ch.url.toLowerCase().endsWith(".m3u8")) {
+        // Limpar player anterior
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        video.pause();
+        video.src = '';
+        
+        if (finalUrl.toLowerCase().includes('.m3u8')) {
+          // Usar HLS.js para streams
           if (window.Hls && Hls.isSupported()) {
-            if (window.hls) window.hls.destroy();
-            window.hls = new Hls();
-            window.hls.loadSource(ch.url);
-            window.hls.attachMedia(video);
-          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = ch.url;
+            console.log('📺 Usando HLS.js');
+            hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: false,
+              backBufferLength: 90
+            });
+            
+            hls.loadSource(finalUrl);
+            hls.attachMedia(video);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              console.log('✅ Manifest carregado');
+              showLoading(false);
+              video.play().catch(err => {
+                console.warn('⚠️ Autoplay bloqueado:', err);
+                showControls(0); // Mantém controles visíveis
+              });
+            });
+            
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.error('❌ Erro HLS:', data);
+              showLoading(false);
+              
+              if (data.fatal) {
+                switch(data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log('🔄 Tentando recuperar erro de rede...');
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('🔄 Tentando recuperar erro de mídia...');
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    alert('❌ Erro fatal ao carregar stream');
+                    break;
+                }
+              }
+            });
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari nativo
+            console.log('🍎 Usando player nativo Safari');
+            video.src = finalUrl;
+            video.load();
+            video.play().then(() => {
+              showLoading(false);
+            }).catch(err => {
+              console.warn('⚠️ Autoplay bloqueado:', err);
+              showLoading(false);
+              showControls(0);
+            });
+          } else {
+            alert('❌ HLS.js não suportado neste navegador');
+            showLoading(false);
           }
         } else {
-          video.src = ch.url;
+          // MP4 ou outros formatos
+          console.log('🎬 Usando HTML5 Video');
+          video.src = finalUrl;
+          video.load();
+          
+          video.addEventListener('loadedmetadata', () => {
+            console.log('✅ Vídeo carregado');
+            showLoading(false);
+            video.play().catch(err => {
+              console.warn('⚠️ Autoplay bloqueado:', err);
+              showControls(0);
+            });
+          }, { once: true });
+          
+          video.addEventListener('error', (e) => {
+            console.error('❌ Erro ao carregar vídeo:', video.error);
+            showLoading(false);
+            
+            let errorMsg = '❌ Não foi possível carregar o vídeo.\n\n';
+            
+            if (video.error.code === 4) {
+              errorMsg += '🔒 Possível problema de certificado SSL.\n\n';
+              errorMsg += 'Tente abrir esta URL diretamente:\n' + finalUrl.substring(0, 60) + '...';
+            } else {
+              errorMsg += 'Código de erro: ' + video.error.code;
+            }
+            
+            alert(errorMsg);
+          }, { once: true });
         }
-      } catch (err) {
-        console.warn("Erro ao configurar fonte do vídeo:", err);
-      }
-
-      // Autoplay: se foi aberto a partir da página de playlists (window.opener existe) ou referrer contém "m3u8"
-      try {
-        if (window.opener || (document.referrer && document.referrer.includes("m3u8"))) {
-          setTimeout(function(){ video.play().catch(function(err){ console.warn("⚠️ Autoplay bloqueado:", err); }); }, 300);
-        } else {
-          video.play().catch(function(err){ console.warn("⚠️ Autoplay bloqueado:", err); });
-        }
-      } catch (err) {
-        console.warn("Erro ao tentar reproduzir:", err);
+      } catch (error) {
+        console.error('Erro ao inicializar player:', error);
+        showLoading(false);
+        alert('❌ Erro: ' + error.message);
       }
     }
-
-
-    // Inicial
-    loadChannel(index);
-
-    // Botão próximo
-    nextBtn.onclick = () => loadChannel(index + 1);
-
-    // Auto próximo ao fim (mp4)
     
-    video.addEventListener("ended", function() {
+    // ==================== CONTROLES ====================
+    
+    function togglePlayPause() {
+      if (video.paused) {
+        video.play();
+        playPauseBtn.textContent = '⏸ Pause';
+      } else {
+        video.pause();
+        playPauseBtn.textContent = '▶️ Play';
+      }
+    }
+    
+    function seek(seconds) {
+      video.currentTime = Math.max(0, Math.min(video.currentTime + seconds, video.duration || 0));
+    }
+    
+    function reload() {
+      loadChannel();
+    }
+    
+    function closePlayer() {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+      video.pause();
+      
+      // Tenta fechar a aba
       try {
-        const params_ended = new URLSearchParams(window.location.search);
-        const dataParam_ended = params_ended.get("data");
-        let playlistEnded = [];
-        if (dataParam_ended) {
-          try { playlistEnded = JSON.parse(atob(decodeURIComponent(dataParam_ended))); } catch(e){ playlistEnded = []; }
+        window.close();
+      } catch (e) {
+        // Se não conseguir fechar, volta para a página anterior
+        if (document.referrer) {
+          window.location.href = document.referrer;
         } else {
-          // fallback legacy (não confiável sem localStorage)
-          try { playlistEnded = JSON.parse(localStorage.getItem('savedPlaylistState') || '{}').urls || []; } catch(e){ playlistEnded = []; }
+          alert('ℹ️ Feche esta aba manualmente');
         }
-
-        if (playlistEnded && playlistEnded[index] && playlistEnded[index].url && playlistEnded[index].url.toLowerCase().endsWith(".mp4")) {
-          loadChannel(index + 1);
-        }
-      } catch (err) {
-        console.warn('Erro no evento ended:', err);
+      }
+    }
+    
+    // ==================== EVENT LISTENERS ====================
+    
+    // Botões
+    playPauseBtn.addEventListener('click', togglePlayPause);
+    document.getElementById('rewBtn').addEventListener('click', () => seek(-10));
+    document.getElementById('fwdBtn').addEventListener('click', () => seek(10));
+    document.getElementById('reloadBtn').addEventListener('click', reload);
+    document.getElementById('closeBtn').addEventListener('click', closePlayer);
+    
+    // Atualizar botão play/pause
+    video.addEventListener('play', () => {
+      playPauseBtn.textContent = '⏸ Pause';
+    });
+    
+    video.addEventListener('pause', () => {
+      playPauseBtn.textContent = '▶️ Play';
+      showControls(0); // Mantém controles visíveis quando pausado
+    });
+    
+    // Auto próximo para MP4
+    video.addEventListener('ended', () => {
+      console.log('🔄 Vídeo terminou');
+      if (url.toLowerCase().endsWith('.mp4')) {
+        // Poderia implementar próximo canal aqui se tivesse playlist
+        showControls(0);
       }
     });
-
-
-    // Mostrar inicial e reaparecer em eventos
-    showOverlay(5000);
-    document.addEventListener("mousemove", () => showOverlay(3000));
-    video.addEventListener("pause", () => showOverlay(0));
-
-    // Tecla voltar
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
+    
+    // Mostrar controles
+    document.addEventListener('mousemove', () => showControls());
+    video.addEventListener('click', () => showControls());
+    
+    // Teclado
+    document.addEventListener('keydown', (e) => {
+      switch(e.key) {
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          togglePlayPause();
+          showControls();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          seek(-10);
+          showControls();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          seek(10);
+          showControls();
+          break;
+        case 'Escape':
+        case 'Backspace':
+          e.preventDefault();
+          closePlayer();
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          reload();
+          showControls();
+          break;
+      }
+      
+      // Códigos de tecla do controle remoto Tizen
+      if (e.keyCode === 10009) { // Return/Back key
         e.preventDefault();
-        location.href = "m3u8.html?return=true";
+        closePlayer();
       }
     });
-	// 🔥 Salvar posição no localStorage
-video.addEventListener("timeupdate", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  allStates[index || url] = video.currentTime; // usa índice se existir, senão a URL
-  localStorage.setItem("playbackPositions", JSON.stringify(allStates));
-});
-function updateClock() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2, "0");
-  const m = now.getMinutes().toString().padStart(2, "0");
-  const s = now.getSeconds().toString().padStart(2, "0");
-  document.getElementById("clock").textContent = `${h}:${m}:${s}`;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// 🔥 Restaurar posição ao carregar
-window.addEventListener("load", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  if (allStates[index || url]) {
-    video.currentTime = allStates[index || url];
-    console.log(`⏪ Retomando do segundo ${allStates[index || url]} para`, name);
-  }
-});
-
+    
+    // ==================== RELÓGIO ====================
+    
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+    }
+    
+    setInterval(updateClock, 1000);
+    updateClock();
+    
+    // ==================== INICIALIZAÇÃO ====================
+    
+    showControls(5000);
+    loadChannel();
+    
+    console.log('🚀 Player inicializado');
+    console.log('📺 Canal:', name);
+    console.log('🔗 URL:', url);
+    console.log('📍 Índice:', index);
   </script>
 </body>
 </html>
