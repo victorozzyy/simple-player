@@ -10,8 +10,8 @@ const PlaylistModule = {
     remotePlaylistsConfig: [
  {name: "🏆 Esportes 1", description: "Canais esportivos em alta definição", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/esportes.m3u8", category: "Esportes"},
       {name: "🏆 Esportes 2", description: "Canais esportivos em alta definição", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_esportes.m3u", category: "Esportes"},
-      {name: "🎬 Canais 24 Hs", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u", category: "Filmes e Series"},
-      {name: "🎬 Canais", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8", category: "Filmes"},
+      {name: "🎬 Lista 01", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/simple-player/refs/heads/main/playlists/lista01.m3u8", category: "Filmes e Series"},
+      {name: "🎬 Lista 02", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/simple-player/refs/heads/main/playlists/lista02.m3u", category: "Filmes"},
       {name: "🎬 Filmes1 ", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u", category: "Mp4"},
       {name: "🎬 Series1 ", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8", category: "Mp4"},
       {name: "🎬 Filmes e Series", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8", category: "Mp4"},
@@ -634,6 +634,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
 
 
 
