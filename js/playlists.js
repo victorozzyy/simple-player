@@ -37,7 +37,7 @@ const PlaylistModule = {
         {
             name: "🔥 Minha Lista Principal",
             description: "Lista 01",
-            url: "https://drive.google.com/file/d/187wy33z9ZxJvl89AAKHS5C8kJizBSwdG/view?usp=sharing"
+            url: "https://raw.githubusercontent.com/victorozzyy/simple-player/refs/heads/main/playlists/lista01.m3u8"
         },
         {
             name: "🔥 Minha 02",
@@ -634,6 +634,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
 
 
 
