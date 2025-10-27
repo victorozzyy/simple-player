@@ -1,4 +1,4 @@
-// channels.js - Gerenciamento de canais COM OVERLAY
+// channels.js - Gerenciamento de canais e categorias
 
 const ChannelModule = {
     channelList: null,
@@ -111,11 +111,6 @@ const ChannelModule = {
     // Mostra overlay de categoria
     showCategoryOverlay(groupName, channels) {
         try {
-            console.log(`📺 Abrindo overlay: ${groupName} (${channels.length} canais)`);
-            
-            // Salvar categoria atual no AppState
-            AppState.currentCategory = groupName;
-            
             const overlay = this.createOverlayElement();
             const title = document.getElementById('overlayTitle');
             const grid = document.getElementById('overlayChannelGrid');
@@ -154,12 +149,6 @@ const ChannelModule = {
         channelDiv.tabIndex = 0;
         channelDiv.dataset.url = channel.url;
         channelDiv.dataset.name = channel.name;
-        channelDiv.dataset.group = channel.group || 'Outros';
-        
-        // Encontrar índice original do canal na playlist completa
-        const originalIndex = AppState.currentPlaylist.findIndex(ch => ch.url === channel.url);
-        channelDiv.dataset.index = originalIndex;
-        
         channelDiv.style.cssText = `
             background: #2a2a2a;
             border: 2px solid #444;
@@ -178,7 +167,7 @@ const ChannelModule = {
                 ${channel.name} ${mp4Badge}
             </div>
             <div style="font-size: 0.8em; color: #aaa;">
-                Grupo: ${channel.group || 'Outros'}
+                Grupo: ${channel.group}
             </div>
         `;
         
@@ -213,7 +202,7 @@ const ChannelModule = {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 1000;
             overflow-y: auto;
             padding: 20px;
@@ -222,7 +211,7 @@ const ChannelModule = {
         
         overlay.innerHTML = `
             <div id="overlayContent" style="
-                max-width: 1200px;
+                max-width: 800px;
                 margin: 0 auto;
                 background: #1a1a1a;
                 border-radius: 10px;
@@ -250,9 +239,9 @@ const ChannelModule = {
                 </div>
                 <div id="overlayChannelGrid" style="
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 12px;
-                    max-height: 70vh;
+                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                    gap: 10px;
+                    max-height: 60vh;
                     overflow-y: auto;
                 "></div>
             </div>
@@ -274,7 +263,6 @@ const ChannelModule = {
         AppState.currentView = 'channels';
         AppState.overlayChannels = [];
         AppState.overlayFocusIndex = 0;
-        AppState.currentCategory = null;
         
         setTimeout(() => {
             const firstHeader = document.querySelector('.category-header');
@@ -314,93 +302,26 @@ const ChannelModule = {
     
     // Abre canal no player
     openChannel(channel) {
-        console.log('🎬 Abrindo canal:', channel.name);
-        
         const channelIndex = AppState.currentPlaylist.findIndex(ch => ch.url === channel.url);
-        
-        // Salvar no AppState ANTES de abrir o player
-        AppState.setCurrentChannel(channel, channelIndex);
         
         if (typeof PlayerModule !== 'undefined') {
             PlayerModule.open(channel.url, channel.name, channelIndex);
         } else {
-            console.error('❌ PlayerModule não carregado');
+            console.error('PlayerModule não carregado');
         }
     },
     
-    // 🎯 FOCAR NO CANAL QUE ESTAVA EM EXECUÇÃO
-    focusChannel(index) {
-        console.log('═══════════════════════════════════════');
-        console.log('🎯 ChannelModule.focusChannel()');
-        console.log('   Índice:', index);
-        console.log('═══════════════════════════════════════');
-        
-        if (index < 0 || index >= AppState.currentPlaylist.length) {
-            console.warn('⚠️ Índice inválido:', index);
-            return false;
-        }
-        
-        const channel = AppState.currentPlaylist[index];
-        if (!channel) {
-            console.error('❌ Canal não encontrado');
-            return false;
-        }
-        
-        const categoryName = channel.group || 'Outros';
-        console.log('📂 Categoria do canal:', categoryName);
-        console.log('📺 Canal:', channel.name);
-        
-        // Agrupar canais por categoria
-        const grouped = this.groupByCategory(AppState.currentPlaylist);
-        const channelsInCategory = grouped[categoryName] || [];
-        
-        // Abrir overlay da categoria
-        this.showCategoryOverlay(categoryName, channelsInCategory);
-        
-        // Aguardar renderização e focar no canal
-        setTimeout(() => {
-            // Encontrar o canal no overlay pelo índice original
-            const targetChannelDiv = AppState.overlayChannels.find(div => {
-                return parseInt(div.dataset.index) === index;
-            });
-            
-            if (targetChannelDiv) {
-                const targetIndex = AppState.overlayChannels.indexOf(targetChannelDiv);
-                console.log('✅ Canal encontrado no overlay, índice:', targetIndex);
-                
-                // Focar com destaque
-                this.setOverlayFocus(targetIndex);
-                
-                // Destaque visual temporário
-                targetChannelDiv.style.boxShadow = '0 0 20px #0f0';
-                targetChannelDiv.style.transform = 'scale(1.05)';
-                
-                setTimeout(() => {
-                    targetChannelDiv.style.boxShadow = '';
-                    targetChannelDiv.style.transform = '';
-                }, 2000);
-                
-                console.log('✅ Foco restaurado no canal:', channel.name);
-                return true;
-            } else {
-                console.warn('⚠️ Canal não encontrado no overlay');
-                return false;
-            }
-        }, 300);
-        
-        return true;
-    },
-    
-    // Foca último canal reproduzido (compatibilidade)
+    // Foca último canal reproduzido
     focusLastChannel() {
         const index = AppState.currentChannelIndex;
-        console.log('🔍 focusLastChannel() - Índice:', index);
-        
-        if (index >= 0) {
-            return this.focusChannel(index);
+        if (index >= 0 && AppState.currentPlaylist[index]) {
+            const channel = AppState.currentPlaylist[index];
+            const header = Array.from(AppState.channelItems).find(h => h.dataset.group === channel.group);
+            
+            if (header) {
+                NavigationModule.setFocusElement(header);
+            }
         }
-        
-        return false;
     },
     
     // Mensagens
