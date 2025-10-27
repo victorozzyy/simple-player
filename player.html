@@ -1,119 +1,934 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Player Web</title>
+  <title>Player M3U8</title>
+  <script src="js/state-manager.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    html, body { height: 100%; margin: 0; background: #000; }
-    #video { width: 100%; height: 100%; background: #000; display: block; }
-    #channelOverlay {
-      position: absolute; top: 10px; left: 0; right: 0;
-      text-align: center; color: #fff; font-size: 22px;
-      background: rgba(0,0,0,0.5); padding: 10px;
-      transition: opacity 0.5s ease;
-      opacity: 1;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #000; 
+      color: #fff;
+      overflow: hidden;
     }
-    #nextBtn {
-      margin-left: 20px; padding: 5px 10px;
-      background: #6bff6b; border: none; border-radius: 5px;
+    
+    #videoContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    
+    #controls {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      background: rgba(0,0,0,0.9);
+      padding: 15px 25px;
+      border-radius: 12px;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+    
+    #controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    button {
+      font-size: 16px;
+      padding: 10px 20px;
+      background: #222;
+      color: white;
+      border: 2px solid transparent;
+      border-radius: 6px;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: #333;
+      border-color: #0f0;
+    }
+    
+    button:focus {
+      outline: none;
+      border-color: #0f0;
+      background: #333;
+    }
+    
+    #btnBack {
+      background: #c00;
+    }
+    
+    #btnBack:hover {
+      background: #e00;
+      border-color: #f00;
+    }
+    
+    #progressContainer {
+      position: fixed;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 80%;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+    
+    #progressContainer.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    #progress {
+      flex: 1;
+      height: 8px;
+      cursor: pointer;
+    }
+    
+    #time {
+      font-size: 14px;
+      color: white;
+      font-variant-numeric: tabular-nums;
+      background: rgba(0,0,0,0.8);
+      padding: 8px 16px;
+      border-radius: 6px;
+      min-width: 140px;
+      text-align: center;
+    }
+    
+    #channelTitle {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-size: 20px;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+    
+    #channelTitle.hidden {
+      opacity: 0;
+    }
+    
+    #loadingMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.95);
+      color: #fff;
+      padding: 40px 60px;
+      border-radius: 12px;
+      font-size: 18px;
+      text-align: center;
+      z-index: 200;
+      border: 2px solid #0f0;
+    }
+    
+    #loadingMessage.hidden {
+      display: none;
+    }
+    
+    #playButton {
+      margin-top: 20px;
+      padding: 15px 40px;
+      font-size: 20px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    #playButton:hover {
+      background: #0c0;
+      transform: scale(1.05);
+    }
+    
+    #playButton:focus {
+      outline: 3px solid #fff;
     }
   </style>
 </head>
 <body>
-  <video id="video" controls autoplay playsinline></video>
-
-  <div id="channelOverlay">
-    <span id="channelTitle"></span>
-    <button id="nextBtn">⏭ Próximo Canal</button>
+  <div id="videoContainer">
+    <video id="videoPlayer" preload="auto" playsinline></video>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <div id="loadingMessage">
+    <div>⏳ Carregando canal...</div>
+    <div id="loadingDetails" style="margin-top: 10px; font-size: 14px; color: #999;"></div>
+    <button id="playButton" style="display:none;">▶️ REPRODUZIR</button>
+  </div>
+
+  <div id="channelTitle">📺 Carregando...</div>
+
+  <div id="controls">
+    <button id="btnBack">🔙 Voltar</button>
+    <button id="prev">⏮ Anterior</button>
+    <button id="rew">⏪ -10s</button>
+    <button id="playpause" autofocus>▶️ Play</button>
+    <button id="fwd">⏩ +10s</button>
+    <button id="next">⏭ Próximo</button>
+    <button id="reload">🔄 Recarregar</button>
+  </div>
+
+  <div id="progressContainer">
+    <span id="time">00:00 / 00:00</span>
+    <input type="range" id="progress" value="0" min="0" max="100">
+  </div>
+
   <script>
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('channelOverlay');
-    const titleEl = document.getElementById('channelTitle');
-    const nextBtn = document.getElementById('nextBtn');
+    console.log('═══════════════════════════════════════');
+    console.log('🚀 PLAYER INICIADO');
+    console.log('═══════════════════════════════════════');
 
-    const params = new URLSearchParams(window.location.search);
-    let index = parseInt(params.get("index") || "0");
+    // Elementos
+    const video = document.getElementById('videoPlayer');
+    const controls = document.getElementById('controls');
+    const progressContainer = document.getElementById('progressContainer');
+    const channelTitle = document.getElementById('channelTitle');
+    const progress = document.getElementById('progress');
+    const timeLabel = document.getElementById('time');
+    const buttons = Array.from(controls.querySelectorAll('button'));
+    const loadingMessage = document.getElementById('loadingMessage');
+    const loadingDetails = document.getElementById('loadingDetails');
+    const playButton = document.getElementById('playButton');
 
-    function showOverlay(ms = 3000) {
-      overlay.style.opacity = "1";
-      if (showOverlay._t) clearTimeout(showOverlay._t);
-      if (ms > 0) {
-        showOverlay._t = setTimeout(() => overlay.style.opacity = "0", ms);
-      }
-    }
+    // Estado
+    let hls = null;
+    let isPlaying = false;
+    let hideTimer = null;
+    let playlist = [];
+    let currentIndex = 0;
+    let playerReady = false;
+    let autoplayBlocked = false;
+    let shouldAutoplay = false;
 
-    function loadChannel(i) {
-      const state = JSON.parse(localStorage.getItem('savedPlaylistState') || '{}');
-      if (!state.urls || !Array.isArray(state.urls) || !state.urls[i]) return;
-
-      const ch = state.urls[i];
-      index = i;
-      titleEl.textContent = ch.name;
-      showOverlay(3000);
-
-      if (ch.url.toLowerCase().endsWith(".m3u8")) {
-        if (window.Hls && Hls.isSupported()) {
-          if (window.hls) window.hls.destroy();
-          window.hls = new Hls();
-          window.hls.loadSource(ch.url);
-          window.hls.attachMedia(video);
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = ch.url;
+    // 🎯 VERIFICAR INTENÇÃO DE AUTOPLAY
+    function checkAutoplayIntent() {
+        const params = new URLSearchParams(window.location.search);
+        const autoplayParam = params.get('autoplay');
+        
+        const userInteracted = sessionStorage.getItem('userInteracted');
+        const autoplayIntent = sessionStorage.getItem('autoplayIntent');
+        const audioUnlocked = sessionStorage.getItem('audioUnlocked');
+        
+        console.log('🔍 Verificando intenção de autoplay:');
+        console.log('   - URL param:', autoplayParam);
+        console.log('   - userInteracted:', userInteracted);
+        console.log('   - autoplayIntent:', autoplayIntent);
+        console.log('   - audioUnlocked:', audioUnlocked);
+        
+        // Se tem parâmetro autoplay=1 OU flags de sessão
+        if (autoplayParam === '1' || userInteracted === 'true' || autoplayIntent === 'true') {
+            console.log('✅ Intenção de autoplay detectada!');
+            shouldAutoplay = true;
+            
+            // Limpar flags
+            sessionStorage.removeItem('userInteracted');
+            sessionStorage.removeItem('userInteractionTime');
+            sessionStorage.removeItem('autoplayIntent');
+            
+            return true;
         }
-      } else {
-        video.src = ch.url;
-      }
-
-      video.play().catch(err => console.warn("⚠️ Autoplay bloqueado:", err));
+        
+        console.log('⚠️ Sem intenção de autoplay');
+        return false;
     }
 
-    // Inicial
-    loadChannel(index);
+    // Verificar autoplay no início
+    shouldAutoplay = checkAutoplayIntent();
 
-    // Botão próximo
-    nextBtn.onclick = () => loadChannel(index + 1);
+    // ==========================================
+    // PARÂMETROS DA URL
+    // ==========================================
+    function getParams() {
+      const params = new URLSearchParams(window.location.search);
+      const url = params.get('url');
+      const name = params.get('name') || 'Canal';
+      const index = parseInt(params.get('index') || '0');
+      
+      console.log('📋 Parâmetros da URL:');
+      console.log('  URL:', url);
+      console.log('  Nome:', name);
+      console.log('  Índice:', index);
+      
+      return { url, name, index };
+    }
 
-    // Auto próximo ao fim (mp4)
-    video.addEventListener("ended", () => {
-      const state = JSON.parse(localStorage.getItem('savedPlaylistState') || '{}');
-      if (state.urls && state.urls[index] && state.urls[index].url.toLowerCase().endsWith(".mp4")) {
-        loadChannel(index + 1);
+    const params = getParams();
+
+    // ==========================================
+    // CARREGAR ESTADO DO STATEMANAGER
+    // ==========================================
+    function loadSavedState() {
+      console.log('📦 Carregando estado salvo...');
+      
+      if (typeof StateManager === 'undefined') {
+        console.warn('⚠️ StateManager não disponível');
+        return false;
+      }
+
+      try {
+        const savedState = StateManager.loadPlayerState();
+        
+        if (savedState) {
+          console.log('✅ Estado encontrado:', {
+            canal: savedState.name,
+            index: savedState.channelIndex,
+            playlistSize: savedState.playlist?.length || 0
+          });
+          
+          // Restaurar playlist
+          if (savedState.playlist && Array.isArray(savedState.playlist)) {
+            playlist = savedState.playlist;
+            currentIndex = savedState.channelIndex || params.index || 0;
+            
+            console.log('✅ Playlist restaurada:', playlist.length, 'canais');
+            console.log('✅ Índice atual:', currentIndex);
+            return true;
+          } else {
+            console.warn('⚠️ Playlist não encontrada no estado');
+          }
+        } else {
+          console.warn('⚠️ Nenhum estado salvo encontrado');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar estado:', error);
+      }
+      
+      return false;
+    }
+
+    // Tentar carregar estado
+    const stateLoaded = loadSavedState();
+
+    console.log('═══════════════════════════════════════');
+    console.log('📊 CONFIGURAÇÃO FINAL:');
+    console.log('  Canal:', params.name);
+    console.log('  Playlist:', playlist.length, 'canais');
+    console.log('  Índice:', currentIndex);
+    console.log('  Autoplay:', shouldAutoplay ? 'SIM ✅' : 'NÃO ⚠️');
+    console.log('═══════════════════════════════════════');
+
+    // ==========================================
+    // VOLTAR PARA LISTA DE CANAIS
+    // ==========================================
+    function backToChannels() {
+        console.log('═══════════════════════════════════════');
+        console.log('🔙 VOLTANDO PARA LISTA DE CANAIS');
+        console.log('═══════════════════════════════════════');
+        
+        // Parar player
+        if (hls) {
+            console.log('⏸️ Parando HLS...');
+            hls.destroy();
+            hls = null;
+        }
+        video.pause();
+        video.src = '';
+        
+        // Usar StateManager se disponível
+        if (typeof StateManager !== 'undefined') {
+            console.log('✅ Usando StateManager para voltar...');
+            StateManager.markReturnFromPlayer();
+            
+            // Obter URL de retorno (index.html com hash se necessário)
+            const returnUrl = StateManager.getReturnUrl();
+            console.log('📍 URL de retorno:', returnUrl);
+            
+            setTimeout(() => {
+                console.log('🚀 Redirecionando...');
+                window.location.href = returnUrl;
+            }, 100);
+        } else {
+            // Fallback: voltar para index.html
+            console.warn('⚠️ StateManager não disponível, usando fallback...');
+            sessionStorage.setItem('returningFromPlayer', 'true');
+            
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 100);
+        }
+    }
+
+    // Botão de voltar
+    document.getElementById('btnBack').addEventListener('click', () => {
+        backToChannels();
+    });
+
+    // ==========================================
+    // FORMATAR TEMPO
+    // ==========================================
+    function formatTime(seconds) {
+      if (!isFinite(seconds)) return '00:00';
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    // ==========================================
+    // CONTROLES DE UI
+    // ==========================================
+    function showControls() {
+      controls.classList.remove('hidden');
+      progressContainer.classList.remove('hidden');
+      channelTitle.classList.remove('hidden');
+      
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        controls.classList.add('hidden');
+        progressContainer.classList.add('hidden');
+        channelTitle.classList.add('hidden');
+      }, 5000);
+    }
+
+    function showLoading(message) {
+      loadingMessage.classList.remove('hidden');
+      loadingDetails.textContent = message || '';
+      if (autoplayBlocked) {
+        playButton.style.display = 'block';
+      }
+    }
+
+    function hideLoading() {
+      loadingMessage.classList.add('hidden');
+      playButton.style.display = 'none';
+    }
+
+    // ==========================================
+    // TENTAR REPRODUZIR (com tentativas múltiplas)
+    // ==========================================
+    function tryPlay() {
+      console.log('▶️ Tentando reproduzir...');
+      console.log('   - shouldAutoplay:', shouldAutoplay);
+      console.log('   - video.muted:', video.muted);
+      
+      // Se deve tentar autoplay
+      if (shouldAutoplay) {
+        console.log('🎯 Tentativa 1: Play com áudio');
+        
+        return video.play()
+          .then(() => {
+            isPlaying = true;
+            playerReady = true;
+            autoplayBlocked = false;
+            document.getElementById('playpause').textContent = '⏸ Pause';
+            console.log('✅ Reproduzindo com áudio!');
+            hideLoading();
+            showControls();
+          })
+          .catch(err => {
+            console.warn('⚠️ Tentativa 1 falhou:', err.message);
+            console.log('🎯 Tentativa 2: Play mutado');
+            
+            // Tentar mutado
+            video.muted = true;
+            return video.play()
+              .then(() => {
+                isPlaying = true;
+                playerReady = true;
+                autoplayBlocked = false;
+                document.getElementById('playpause').textContent = '⏸ Pause (Mudo)';
+                console.log('✅ Reproduzindo mutado!');
+                console.log('💡 Dica: Clique para ativar áudio');
+                hideLoading();
+                showControls();
+                
+                // Mensagem para usuário desmutar
+                channelTitle.textContent = '🔇 ' + params.name + ' (Clique para ativar som)';
+                
+                // Ao clicar, desmutar
+                const unmute = () => {
+                  video.muted = false;
+                  channelTitle.textContent = '📺 ' + params.name;
+                  document.getElementById('playpause').textContent = '⏸ Pause';
+                  document.removeEventListener('click', unmute);
+                  console.log('🔊 Áudio ativado!');
+                };
+                document.addEventListener('click', unmute, { once: true });
+              })
+              .catch(err2 => {
+                console.error('❌ Tentativa 2 falhou:', err2.message);
+                autoplayBlocked = true;
+                playerReady = true;
+                
+                // Mostrar botão manual
+                loadingDetails.textContent = '▶️ Clique no botão para reproduzir';
+                playButton.style.display = 'block';
+                playButton.focus();
+                
+                console.log('💡 Aguardando interação manual do usuário...');
+              });
+          });
+      } else {
+        // Não deve autoplay, apenas preparar
+        console.log('⏸️ Preparando player sem autoplay');
+        playerReady = true;
+        loadingDetails.textContent = '▶️ Clique no botão para reproduzir';
+        playButton.style.display = 'block';
+        playButton.focus();
+        return Promise.resolve();
+      }
+    }
+
+    // Botão de play manual
+    playButton.addEventListener('click', () => {
+      console.log('👆 Usuário clicou em PLAY');
+      video.muted = false;
+      video.play()
+        .then(() => {
+          isPlaying = true;
+          autoplayBlocked = false;
+          document.getElementById('playpause').textContent = '⏸ Pause';
+          hideLoading();
+          showControls();
+          console.log('✅ Reproduzindo após interação');
+        })
+        .catch(err => {
+          console.error('❌ Erro ao reproduzir:', err);
+          loadingDetails.textContent = 'Erro: ' + err.message;
+        });
+    });
+
+    // ==========================================
+    // PLAYER
+    // ==========================================
+    function initPlayer(url, name) {
+      console.log('═══════════════════════════════════════');
+      console.log('🎬 INICIALIZANDO PLAYER');
+      console.log('URL:', url);
+      console.log('Nome:', name);
+      console.log('═══════════════════════════════════════');
+
+      if (!url || url.trim() === '') {
+        console.error('❌ URL inválida ou vazia');
+        channelTitle.textContent = '❌ URL inválida';
+        loadingDetails.textContent = 'URL do canal não foi fornecida';
+        return;
+      }
+
+      channelTitle.textContent = '📺 ' + name;
+      showLoading('Conectando ao stream...');
+
+      // Limpar player anterior
+      if (hls) {
+        console.log('🗑️ Destruindo HLS anterior');
+        hls.destroy();
+        hls = null;
+      }
+
+      // Resetar vídeo
+      video.pause();
+      video.src = '';
+      video.load();
+
+      // Verificar se é HLS (m3u8)
+      if (url.includes('.m3u8')) {
+        console.log('📡 Stream HLS detectado');
+        loadingDetails.textContent = 'Stream HLS - Carregando manifest...';
+        
+        if (Hls.isSupported()) {
+          console.log('✅ HLS.js suportado');
+          
+          hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 600,
+            debug: false
+          });
+
+          hls.on(Hls.Events.MANIFEST_LOADING, () => {
+            console.log('📡 Carregando manifest...');
+            loadingDetails.textContent = 'Baixando manifest M3U8...';
+          });
+
+          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            console.log('✅ Manifest carregado');
+            console.log('   Níveis:', data.levels.length);
+            loadingDetails.textContent = 'Manifest carregado, iniciando reprodução...';
+            
+            // Tentar autoplay
+            tryPlay();
+          });
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('❌ HLS Error:', data.type, data.details);
+            
+            if (data.fatal) {
+              loadingDetails.textContent = `Erro fatal: ${data.type} - ${data.details}`;
+              
+              switch(data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  console.log('🔄 Tentando recuperar erro de rede...');
+                  loadingDetails.textContent = 'Erro de rede, tentando reconectar...';
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  console.log('🔄 Tentando recuperar erro de mídia...');
+                  loadingDetails.textContent = 'Erro de mídia, tentando recuperar...';
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  console.error('❌ Erro fatal irrecuperável');
+                  channelTitle.textContent = '❌ Erro ao reproduzir';
+                  loadingDetails.textContent = 'Erro irrecuperável. Tente recarregar.';
+                  hls.destroy();
+                  break;
+              }
+            }
+          });
+
+          console.log('🔗 Carregando source:', url);
+          hls.loadSource(url);
+          hls.attachMedia(video);
+
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          console.log('✅ HLS nativo suportado (Safari)');
+          loadingDetails.textContent = 'Usando HLS nativo...';
+          video.src = url;
+          tryPlay();
+        } else {
+          console.error('❌ HLS não suportado');
+          channelTitle.textContent = '❌ HLS não suportado';
+          loadingDetails.textContent = 'Seu navegador não suporta streams M3U8';
+        }
+
+      } else {
+        // Vídeo direto (mp4, etc)
+        console.log('🎥 Vídeo direto detectado');
+        loadingDetails.textContent = 'Carregando vídeo direto...';
+        video.src = url;
+        tryPlay();
+      }
+    }
+
+    // ==========================================
+    // CONTROLES DE REPRODUÇÃO
+    // ==========================================
+    function togglePlayPause() {
+      if (isPlaying) {
+        video.pause();
+        isPlaying = false;
+        document.getElementById('playpause').textContent = '▶️ Play';
+        console.log('⏸ Pausado');
+      } else {
+        video.play();
+        isPlaying = true;
+        document.getElementById('playpause').textContent = '⏸ Pause';
+        console.log('▶️ Reproduzindo');
+      }
+      showControls();
+    }
+
+    function seek(seconds) {
+      if (video.duration && isFinite(video.duration)) {
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+        showControls();
+        console.log('⏩ Seek:', video.currentTime);
+      }
+    }
+
+    function reload() {
+      console.log('🔄 Recarregando canal...');
+      const currentTime = video.currentTime;
+      shouldAutoplay = true; // Permitir autoplay no reload
+      initPlayer(params.url, params.name);
+      setTimeout(() => {
+        if (currentTime > 0) {
+          video.currentTime = currentTime;
+        }
+      }, 1000);
+    }
+
+    // ==========================================
+    // TROCA DE CANAIS
+    // ==========================================
+    function switchChannel(offset) {
+      if (playlist.length === 0) {
+        console.warn('⚠️ Playlist vazia');
+        channelTitle.textContent = '⚠️ Sem playlist disponível';
+        setTimeout(() => {
+          channelTitle.textContent = '📺 ' + params.name;
+        }, 2000);
+        return;
+      }
+
+      currentIndex = (currentIndex + offset + playlist.length) % playlist.length;
+      const nextChannel = playlist[currentIndex];
+
+      if (!nextChannel || !nextChannel.url) {
+        console.warn('❌ Canal inválido no índice', currentIndex);
+        return;
+      }
+
+      console.log(`🔄 Mudando para canal ${currentIndex + 1}/${playlist.length}: ${nextChannel.name}`);
+
+      // Atualizar estado no StateManager
+      if (typeof StateManager !== 'undefined') {
+        StateManager.updateChannelIndex(currentIndex);
+      }
+
+      // Atualizar parâmetros
+      params.url = nextChannel.url;
+      params.name = nextChannel.name;
+      params.index = currentIndex;
+
+      // Permitir autoplay na troca de canais
+      shouldAutoplay = true;
+
+      // Reiniciar player
+      initPlayer(nextChannel.url, nextChannel.name);
+    }
+
+    // ==========================================
+    // PROGRESS BAR
+    // ==========================================
+    function updateProgress() {
+      if (video.duration && isFinite(video.duration)) {
+        progress.value = (video.currentTime / video.duration) * 100;
+        timeLabel.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+      } else {
+        timeLabel.textContent = `${formatTime(video.currentTime)} / --:--`;
+      }
+      requestAnimationFrame(updateProgress);
+    }
+
+    // ==========================================
+    // EVENTOS DOS BOTÕES
+    // ==========================================
+    document.getElementById('playpause').addEventListener('click', togglePlayPause);
+    document.getElementById('rew').addEventListener('click', () => seek(-10));
+    document.getElementById('fwd').addEventListener('click', () => seek(10));
+    document.getElementById('reload').addEventListener('click', reload);
+    document.getElementById('prev').addEventListener('click', () => switchChannel(-1));
+    document.getElementById('next').addEventListener('click', () => switchChannel(1));
+
+    progress.addEventListener('input', () => {
+      if (video.duration && isFinite(video.duration)) {
+        video.currentTime = (progress.value / 100) * video.duration;
       }
     });
 
-    // Mostrar inicial e reaparecer em eventos
-    showOverlay(5000);
-    document.addEventListener("mousemove", () => showOverlay(3000));
-    video.addEventListener("pause", () => showOverlay(0));
+    // ==========================================
+    // EVENTOS DE VÍDEO
+    // ==========================================
+    video.addEventListener('play', () => {
+      isPlaying = true;
+      document.getElementById('playpause').textContent = '⏸ Pause';
+    });
 
-    // Tecla voltar
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" || e.key === "Escape" || e.keyCode === 10009) {
+    video.addEventListener('pause', () => {
+      isPlaying = false;
+      document.getElementById('playpause').textContent = '▶️ Play';
+    });
+
+    video.addEventListener('ended', () => {
+      console.log('✅ Vídeo terminou');
+      if (playlist.length > 1) {
+        console.log('⏭ Próximo canal automático');
+        switchChannel(1);
+      }
+    });
+
+    video.addEventListener('loadstart', () => {
+      console.log('📡 Iniciando carregamento...');
+    });
+
+    video.addEventListener('loadedmetadata', () => {
+      console.log('✅ Metadados carregados');
+      console.log('   Duração:', formatTime(video.duration));
+    });
+
+    video.addEventListener('canplay', () => {
+      console.log('✅ Pronto para reproduzir');
+    });
+
+    video.addEventListener('waiting', () => {
+      console.log('⏳ Aguardando buffer...');
+      showLoading('Aguardando dados...');
+    });
+
+    video.addEventListener('playing', () => {
+      console.log('▶️ Reproduzindo...');
+      hideLoading();
+    });
+
+    // ==========================================
+    // TECLADO
+    // ==========================================
+    document.addEventListener('keydown', (e) => {
+      console.log('🎮 Tecla:', e.key, 'keyCode:', e.keyCode);
+
+      // BACKSPACE ou BACK - Voltar
+      if (e.key === 'Backspace' || e.keyCode === 10009 || e.key === 'Back') {
         e.preventDefault();
-        location.href = "m3u8.html?return=true";
+        console.log('🔙 Voltando para lista de canais...');
+        backToChannels();
+        return;
+      }
+
+      // Mostrar controles
+      showControls();
+
+      // Navegação entre botões
+      const focused = document.activeElement;
+      const idx = buttons.indexOf(focused);
+
+      switch(e.key) {
+        case 'ArrowRight':
+          if (idx >= 0) {
+            e.preventDefault();
+            buttons[(idx + 1) % buttons.length].focus();
+          }
+          break;
+
+        case 'ArrowLeft':
+          if (idx >= 0) {
+            e.preventDefault();
+            buttons[(idx - 1 + buttons.length) % buttons.length].focus();
+          }
+          break;
+
+        case 'Enter':
+          if (idx >= 0) {
+            e.preventDefault();
+            focused.click();
+          }
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          switchChannel(-1);
+          break;
+
+        case 'ArrowDown':
+          e.preventDefault();
+          switchChannel(1);
+          break;
+
+        case ' ':
+        case 'MediaPlayPause':
+          e.preventDefault();
+          togglePlayPause();
+          break;
+
+        case 'MediaPlay':
+          e.preventDefault();
+          if (!isPlaying) video.play();
+          break;
+
+        case 'MediaPause':
+          e.preventDefault();
+          if (isPlaying) video.pause();
+          break;
+
+        case 'MediaTrackNext':
+          e.preventDefault();
+          switchChannel(1);
+          break;
+
+        case 'MediaTrackPrevious':
+          e.preventDefault();
+          switchChannel(-1);
+          break;
       }
     });
-	// 🔥 Salvar posição no localStorage
-video.addEventListener("timeupdate", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  allStates[index || url] = video.currentTime; // usa índice se existir, senão a URL
-  localStorage.setItem("playbackPositions", JSON.stringify(allStates));
-});
 
-// 🔥 Restaurar posição ao carregar
-window.addEventListener("load", () => {
-  const allStates = JSON.parse(localStorage.getItem("playbackPositions") || "{}");
-  if (allStates[index || url]) {
-    video.currentTime = allStates[index || url];
-    console.log(`⏪ Retomando do segundo ${allStates[index || url]} para`, name);
-  }
-});
+    // CH+/CH- por keyCode (TVs Samsung)
+    document.addEventListener('keydown', (e) => {
+      if (e.keyCode === 427) { // CH+
+        e.preventDefault();
+        switchChannel(1);
+      } else if (e.keyCode === 428) { // CH-
+        e.preventDefault();
+        switchChannel(-1);
+      }
+    });
 
+    // MOUSE/TOQUE - Qualquer clique tenta play se bloqueado
+    document.addEventListener('mousemove', showControls);
+    document.addEventListener('click', (e) => {
+      showControls();
+      
+      // Se autoplay foi bloqueado e usuário clicou, tentar play
+      if (autoplayBlocked && playerReady && !isPlaying) {
+        console.log('👆 Clique detectado, tentando reproduzir...');
+        shouldAutoplay = true;
+        video.muted = false;
+        tryPlay();
+      }
+    });
+    document.addEventListener('touchstart', (e) => {
+      showControls();
+      
+      // Se autoplay foi bloqueado e usuário tocou, tentar play
+      if (autoplayBlocked && playerReady && !isPlaying) {
+        console.log('👆 Toque detectado, tentando reproduzir...');
+        shouldAutoplay = true;
+        video.muted = false;
+        tryPlay();
+      }
+    });
+
+    // ==========================================
+    // INICIALIZAÇÃO
+    // ==========================================
+    window.addEventListener('load', () => {
+      console.log('═══════════════════════════════════════');
+      console.log('✅ PÁGINA CARREGADA');
+      console.log('═══════════════════════════════════════');
+
+      // Verificar URL
+      if (!params.url || params.url.trim() === '') {
+        console.error('❌ URL não fornecida');
+        channelTitle.textContent = '❌ URL não fornecida';
+        loadingDetails.textContent = 'Parâmetro "url" está vazio ou ausente';
+        
+        // Tentar voltar após 3 segundos
+        setTimeout(() => {
+          console.log('🔙 Voltando para página anterior...');
+          backToChannels();
+        }, 3000);
+        return;
+      }
+
+      // Iniciar player
+      setTimeout(() => {
+        initPlayer(params.url, params.name);
+        updateProgress();
+        buttons[3].focus(); // Foco no play/pause (índice 3 agora por causa do botão Voltar)
+      }, 500);
+    });
+
+    console.log('═══════════════════════════════════════');
+    console.log('✅ PLAYER CONFIGURADO');
+    console.log('═══════════════════════════════════════');
   </script>
 </body>
 </html>
