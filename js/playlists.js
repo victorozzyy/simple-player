@@ -36,22 +36,22 @@ const PlaylistModule = {
         {
             name: "🔥 Minha Lista Principal",
             description: "Lista 01",
-            url: "https://raw.githubusercontent.com/victorozzyy/simple-player/refs/heads/main/playlists/lista01.m3u8"
+            url: "http://kinder5.live:80/get.php?username=398065272&password=554587592&type=m3u_plus"
         },
         {
             name: "🔥 Minha 02",
             description: "Lista 02",
-            url: "https://felas87dz.icu/get.php?username=ednamaria&password=366242934&type=m3u_plus"
+            url: "https://kinder5.live:80/get.php?username=26074042325&password=66287290983&type=m3u_plus"
         },
         {
             name: "🔥 Minha 03",
             description: "Lista 03",
-            url: "https://felas87dz.icu/get.php?username=Diego01&password=9518484&type=m3u_plus"
+            url: "https://kinder5.live:80/get.php?username=164485614&password=530298439&type=m3u_plus"
         },
         {
             name: "🔥 Minha Lista 04",
             description: "Lista 04",
-            url: "https://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus"
+            url: "https://kinder5.live:80/get.php?username=688306193&password=033189514&type=m3u_plus"
         }
     ],
     
@@ -633,6 +633,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
 
 
 
