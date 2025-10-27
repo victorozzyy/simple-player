@@ -1,5 +1,4 @@
 // playlists.js - Gerenciamento de playlists locais, remotas e uploads
-// OTIMIZADO PARA SMART TV - SEM LIMITES DE TIMEOUT
 
 const PlaylistModule = {
     playlistSelector: null,
@@ -10,171 +9,71 @@ const PlaylistModule = {
     // Configurações de playlists remotas
     remotePlaylistsConfig: [
         {
-        name: "🏆 Esportes 1",
-        description: "Canais esportivos em alta definição",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/esportes.m3u8",
-        category: "Esportes"
-      },{
-        name: "🏆 Esportes 2",
-        description: "Canais esportivos em alta definição",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_esportes.m3u",
-        category: "Esportes"
-      },{
-        name: "🎬 Canais 24 Hs",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u",
-        category: "Filmes e Series"
-      },
-	  {
-        name: "🎬 Canais",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8",
-        category: "Filmes"
-      },
-	  
-	  {
-        name: "🎬 Filmes1 ",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
-        category: "Mp4"
-      },
-      {
-        name: "🎬 Series1 ",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8",
-        category: "Mp4"
-      },
-      {
-        name: "🎬 Filmes e Series",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8",
-        category: "Mp4"
-      },{
-        name: "🎬 Filmes e Series2",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_filmes_series.m3u",
-        category: "Filmes e Series"
-      },
-      {
-        name: "🎬 Series2 mp4",
-        description: "Big sequencia, series boas.",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series2-mp4.m3u8",
-        category: "Mp4"
-      },{
-        name: "🎬 Series3 mp4",
-        description: "Rancho, Dexter, Suits, Justfield",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series3-mp4.m3u8",
-        category: "Mp4"
-      },{
-        name: "🎬 Filmes2 mp4",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/filmes2-mp4.m3u8",
-        category: "Mp4"
-      },{
-        name: "🎬 Canais2 mp4",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais2.m3u8",
-        category: "Mp4"
-      },
-	  {
-        name: "🎬 Mp4 1",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
-        category: "Mp4"
-      },{
-        name: "🎬 Mp4 2",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part2.m3u",
-        category: "Mp4"
-      },
-	  /* Atualizar essas playlists
-	  {
-        name: "🎬 Mp4 3",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part3.m3u",
-        category: "Filmes"
-      },
-	  {
-        name: "🎬 Mp4 4",
-        description: "Canais variados de alta qualidade",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part4.m3u",
-        category: "Filmes"
-      },
-	  */
-      
-      {
-        name: "🎭 Educativo",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/educativo.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Aqueles",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/aqules.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Educativo3",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/new.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 teste",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/teste.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional00",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/teste2.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria2.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional4 Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria3.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional Pov Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria4.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional3 Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 NovoPono Instavel",
-        description: "Conteúdo seguro para crianças",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/novopono.m3u8",
-        category: "Pt"
-      },
-	  {
-        name: "👶 Desenhos",
-        description: "Conteúdo seguro para crianças",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_desenhos.m3u",
-        category: "Infantil"
-      }
+            name: "🏆 Esportes 1",
+            description: "Canais esportivos em alta definição",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/esportes.m3u8",
+            category: "Esportes"
+        },
+        {
+            name: "🏆 Esportes 2",
+            description: "Canais esportivos em alta definição",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_esportes.m3u",
+            category: "Esportes"
+        },
+        {
+            name: "🎬 Canais 24 Hs",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u",
+            category: "Filmes e Series"
+        },
+        {
+            name: "🎬 Canais",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8",
+            category: "Filmes"
+        },
+        {
+            name: "🎬 Filmes1",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
+            category: "Mp4"
+        },
+        {
+            name: "🎬 Series1",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8",
+            category: "Mp4"
+        },
+        {
+            name: "🎬 Filmes e Series",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8",
+            category: "Mp4"
+        },
+        {
+            name: "🎬 Filmes e Series2",
+            description: "Canais variados de alta qualidade",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_filmes_series.m3u",
+            category: "Filmes e Series"
+        },
+        {
+            name: "👶 Desenhos",
+            description: "Conteúdo seguro para crianças",
+            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_desenhos.m3u",
+            category: "Infantil"
+        }
     ],
     
-     // Playlists locais
+    // Playlists locais
     availablePlaylists: [
-        { name: "24Hs", filename: "playlist_24h.m3u" },
-        { name: "An", filename: "playlist_Anonymous100_plus02.m3u" },
-        { name: "teste", filename: "test.m3u" }
+        { name: "24 Hs", filename: "playlist_24h.m3u" },
+        { name: "TV Misto", filename: "tvmisto.m3u8" },
+        { name: "Filmes e Series", filename: "filmes-series.m3u8" },
+        { name: "Filmes mp4", filename: "filmes.m3u8" },
+        { name: "Esportes", filename: "esportes.m3u8" },
+        { name: "Variedades", filename: "variedades.m3u8" },
+        { name: "Educativo", filename: "teste.m3u8" },
+        { name: "Desenhos", filename: "playlist_desenhos.m3u" }
     ],
     
     // Minhas Listas (personalizadas)
@@ -330,7 +229,7 @@ const PlaylistModule = {
         }
     },
     
-    // Carrega playlist remota - SEM TIMEOUT
+    // Carrega playlist remota
     async loadRemotePlaylist(url, name) {
         try {
             if (!this.isValidUrl(url)) {
@@ -345,18 +244,21 @@ const PlaylistModule = {
                 return;
             }
             
-            ChannelModule.showMessage(`🔄 Carregando ${name}... Aguarde...`, 'loading');
+            ChannelModule.showMessage(`📄 Carregando ${name}...`, 'loading');
             
-            // REMOVIDO O TIMEOUT - Aguarda indefinidamente
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
             const response = await fetch(url, { 
+                signal: controller.signal,
                 cache: 'no-cache'
             });
+            
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`Falha ao carregar ${name} (${response.status})`);
             }
-            
-            ChannelModule.showMessage(`⏳ Processando dados de ${name}...`, 'loading');
             
             const data = await response.text();
             const parsedPlaylist = this.parsePlaylist(data);
@@ -369,8 +271,12 @@ const PlaylistModule = {
             this.setPlaylist(parsedPlaylist, name, 'remote');
             
         } catch (error) {
-            console.error('Erro ao carregar playlist remota:', error);
-            ChannelModule.showMessage(`❌ Erro: ${error.message}`, 'error');
+            if (error.name === 'AbortError') {
+                ChannelModule.showMessage('❌ Timeout ao carregar playlist', 'error');
+            } else {
+                console.error('Erro ao carregar playlist remota:', error);
+                ChannelModule.showMessage(`❌ Erro: ${error.message}`, 'error');
+            }
         }
     },
     
@@ -379,7 +285,7 @@ const PlaylistModule = {
         this.hideAllSelectors();
         this.playlistSelector.style.display = 'block';
         
-        this.playlistList.innerHTML = '<li class="loading">🔄 Detectando playlists disponíveis...</li>';
+        this.playlistList.innerHTML = '<li class="loading">📄 Detectando playlists disponíveis...</li>';
         
         try {
             const detectedPlaylists = await this.detectAvailablePlaylists();
@@ -393,18 +299,17 @@ const PlaylistModule = {
         setTimeout(() => this.focusFirstPlaylist(), 100);
     },
     
-    // Detecta playlists disponíveis - TIMEOUT AUMENTADO
+    // Detecta playlists disponíveis
     async detectAvailablePlaylists() {
         ChannelModule.showMessage('🔍 Verificando playlists disponíveis...', 'loading');
         
         try {
             const promises = this.availablePlaylists.map(async playlist => {
                 try {
-                    // Timeout aumentado para 30 segundos
                     const response = await fetch(`playlists/${playlist.filename}`, { 
                         method: 'HEAD',
                         cache: 'no-cache',
-                        signal: AbortSignal.timeout(30000)
+                        signal: AbortSignal.timeout(5000)
                     });
                     
                     return {
@@ -507,7 +412,7 @@ const PlaylistModule = {
         }
     },
     
-    // Carrega playlist de arquivo local - TIMEOUT AUMENTADO
+    // Carrega playlist de arquivo local
     async loadPlaylistFromFile(filename) {
         try {
             if (!filename) {
@@ -523,12 +428,11 @@ const PlaylistModule = {
                 return;
             }
             
-            ChannelModule.showMessage(`🔄 Carregando ${filename}...`, 'loading');
+            ChannelModule.showMessage(`📄 Carregando ${filename}...`, 'loading');
             
-            // Timeout aumentado para 30 segundos
             const response = await fetch(`playlists/${filename}`, {
                 cache: 'no-cache',
-                signal: AbortSignal.timeout(30000)
+                signal: AbortSignal.timeout(8000)
             });
             
             if (!response.ok) {
@@ -551,7 +455,7 @@ const PlaylistModule = {
         }
     },
     
-    // Carrega de URL - SEM TIMEOUT
+    // Carrega de URL
     async loadFromUrl() {
         try {
             const url = prompt('Digite a URL da playlist (.m3u8):');
@@ -569,10 +473,11 @@ const PlaylistModule = {
                 return;
             }
             
-            ChannelModule.showMessage('🔄 Carregando playlist de URL... Aguarde...', 'loading');
+            ChannelModule.showMessage('📄 Carregando playlist de URL...', 'loading');
             
-            // REMOVIDO O TIMEOUT
-            const response = await fetch(trimmedUrl);
+            const response = await fetch(trimmedUrl, {
+                signal: AbortSignal.timeout(10000)
+            });
             
             if (!response.ok) {
                 throw new Error(`URL inválida (${response.status})`);
