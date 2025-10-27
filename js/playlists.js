@@ -66,14 +66,7 @@ const PlaylistModule = {
     
     // Playlists locais
     availablePlaylists: [
-        { name: "24 Hs", filename: "playlist_24h.m3u" },
-        { name: "TV Misto", filename: "tvmisto.m3u8" },
-        { name: "Filmes e Series", filename: "filmes-series.m3u8" },
-        { name: "Filmes mp4", filename: "filmes.m3u8" },
-        { name: "Esportes", filename: "esportes.m3u8" },
-        { name: "Variedades", filename: "variedades.m3u8" },
-        { name: "Educativo", filename: "teste.m3u8" },
-        { name: "Desenhos", filename: "playlist_desenhos.m3u" }
+        { name: "24 Hs", filename: "playlist_24h.m3u" }
     ],
     
     // Minhas Listas (personalizadas)
@@ -81,7 +74,7 @@ const PlaylistModule = {
         {
             name: "🔥 Minha Lista Principal",
             description: "Lista 01",
-            url: "https://felas87dz.icu/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus"
+            url: "https://github.com/victorozzyy/simple-player/releases/download/lista/playlist_Diego01_plus02.m3u"
         },
         {
             name: "🔥 Minha 02",
@@ -676,4 +669,5 @@ const PlaylistModule = {
 // Export
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
+
 }
