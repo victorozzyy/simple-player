@@ -8,61 +8,23 @@ const PlaylistModule = {
     
     // Configurações de playlists remotas
     remotePlaylistsConfig: [
-        {
-            name: "🏆 Esportes 1",
-            description: "Canais esportivos em alta definição",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/esportes.m3u8",
-            category: "Esportes"
-        },
-        {
-            name: "🏆 Esportes 2",
-            description: "Canais esportivos em alta definição",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_esportes.m3u",
-            category: "Esportes"
-        },
-        {
-            name: "🎬 Canais 24 Hs",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u",
-            category: "Filmes e Series"
-        },
-        {
-            name: "🎬 Canais",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8",
-            category: "Filmes"
-        },
-        {
-            name: "🎬 Filmes1",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
-            category: "Mp4"
-        },
-        {
-            name: "🎬 Series1",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8",
-            category: "Mp4"
-        },
-        {
-            name: "🎬 Filmes e Series",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8",
-            category: "Mp4"
-        },
-        {
-            name: "🎬 Filmes e Series2",
-            description: "Canais variados de alta qualidade",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_filmes_series.m3u",
-            category: "Filmes e Series"
-        },
-        {
-            name: "👶 Desenhos",
-            description: "Conteúdo seguro para crianças",
-            url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_desenhos.m3u",
-            category: "Infantil"
-        }
-    ],
+ {name: "🏆 Esportes 1", description: "Canais esportivos em alta definição", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/esportes.m3u8", category: "Esportes"},
+      {name: "🏆 Esportes 2", description: "Canais esportivos em alta definição", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_esportes.m3u", category: "Esportes"},
+      {name: "🎬 Canais 24 Hs", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_24h.m3u", category: "Filmes e Series"},
+      {name: "🎬 Canais", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8", category: "Filmes"},
+      {name: "🎬 Filmes1 ", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u", category: "Mp4"},
+      {name: "🎬 Series1 ", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8", category: "Mp4"},
+      {name: "🎬 Filmes e Series", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8", category: "Mp4"},
+      {name: "🎬 Filmes e Series2", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_filmes_series.m3u", category: "Filmes e Series"},
+      {name: "🎬 Series2 mp4", description: "Big sequencia, series boas.", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series2-mp4.m3u8", category: "Mp4"},
+      {name: "🎬 Series3 mp4", description: "Rancho, Dexter, Suits, Justfield", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series3-mp4.m3u8", category: "Mp4"},
+      {name: "🎬 Filmes2 mp4", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/filmes2-mp4.m3u8", category: "Mp4"},
+      {name: "🎬 Canais2 mp4", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais2.m3u8", category: "Mp4"},
+      {name: "🎬 Mp4 1", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u", category: "Mp4"},
+      {name: "🎬 Mp4 2", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part2.m3u", category: "Mp4"},
+      {name: "🎬 Mp4 3", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part3.m3u", category: "Filmes"},
+      {name: "🎬 Mp4 4", description: "Canais variados de alta qualidade", url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part4.m3u", category: "Filmes"},
+     ];
     
     // Playlists locais
     availablePlaylists: [
@@ -74,7 +36,7 @@ const PlaylistModule = {
         {
             name: "🔥 Minha Lista Principal",
             description: "Lista 01",
-            url: "https://github.com/victorozzyy/simple-player/releases/download/lista/playlist_Diego01_plus02.m3u"
+            url: "https://drive.google.com/file/d/187wy33z9ZxJvl89AAKHS5C8kJizBSwdG/view?usp=sharing"
         },
         {
             name: "🔥 Minha 02",
@@ -671,3 +633,4 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
