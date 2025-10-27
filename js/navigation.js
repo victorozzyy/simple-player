@@ -1,4 +1,4 @@
-// navigation.js - Sistema de navegação por teclado e controle remoto
+// navigation.js - Sistema de navegação COM OVERLAY
 
 const NavigationModule = {
     
@@ -28,7 +28,7 @@ const NavigationModule = {
         AppState.channelItems = this.getVisibleNavigableItems();
         AppState.currentFocusIndex = AppState.channelItems.indexOf(el);
         
-        console.log(`Foco aplicado em: ${el.textContent?.substring(0, 50)} (índice: ${AppState.currentFocusIndex})`);
+        console.log(`✅ Foco: ${el.textContent?.substring(0, 50)} (${AppState.currentFocusIndex})`);
     },
     
     // Obtém itens navegáveis visíveis
@@ -43,6 +43,7 @@ const NavigationModule = {
     
     // Move foco
     moveFocus(delta) {
+        // OVERLAY tem prioridade
         if (AppState.currentView === 'overlay') {
             ChannelModule.moveOverlayFocus(delta);
             return;
@@ -102,7 +103,7 @@ const NavigationModule = {
     // Configura controles de teclado
     setupKeyboardControls() {
         document.addEventListener('keydown', (e) => {
-            console.log(`Tecla pressionada: ${e.key}, View atual: ${AppState.currentView}`);
+            console.log(`🎮 Tecla: ${e.key} | View: ${AppState.currentView}`);
             
             // Controles do overlay de canais
             if (AppState.currentView === 'overlay') {
@@ -116,21 +117,23 @@ const NavigationModule = {
                     return;
                 } else if (e.key === 'ArrowRight') {
                     e.preventDefault();
-                    ChannelModule.moveOverlayFocus(4);
+                    ChannelModule.moveOverlayFocus(4); // Grid 4 colunas
                     return;
                 } else if (e.key === 'ArrowLeft') {
                     e.preventDefault();
-                    ChannelModule.moveOverlayFocus(-4);
+                    ChannelModule.moveOverlayFocus(-4); // Grid 4 colunas
                     return;
                 } else if (this.isOKKey(e)) {
                     e.preventDefault();
                     const focusedChannel = AppState.overlayChannels[AppState.overlayFocusIndex];
                     if (focusedChannel) {
+                        console.log('🎯 Clicando no canal focado');
                         focusedChannel.click();
                     }
                     return;
                 } else if (e.key === 'Backspace' || e.key === 'Escape' || e.keyCode === 10009) {
                     e.preventDefault();
+                    console.log('❌ Fechando overlay');
                     ChannelModule.hideOverlay();
                     return;
                 }
@@ -160,6 +163,7 @@ const NavigationModule = {
                 ];
                 
                 if (clickableElements.some(className => active?.classList.contains(className))) {
+                    console.log('🖱️ Clicando no elemento ativo');
                     active.click();
                 }
                 return;
