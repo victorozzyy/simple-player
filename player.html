@@ -1,12 +1,42 @@
-<!DOCTYPE html>
+// Event listeners do player
+        videoPlayer.addEventListener('timeupdate', () => {
+          if (videoPlayer.duration) {
+            const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+            progress.value = percent;
+            timeLabel.textContent = formatTime(videoPlayer.currentTime) + ' / ' + formatTime(videoPlayer.duration);
+          }
+        });
+        
+        videoPlayer.addEventListener('ended', () => {
+          console.log('✅ Stream completado');
+          if (playlist.length > 1) {
+            autoplayAttempted = false; // Reset para próximo canal
+            switchChannel(1);
+          }
+        });
+        
+        videoPlayer.addEventListener('playing', () => {
+          hideLoading();
+        });
+        
+        videoPlayer.addEventListener('waiting', () => {
+          showLoading('Buffering...');
+        });<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
   <title>Player M3U8</title>
   <script src="js/state-manager.js"></script>
+  <!-- HLS.js para reprodução de streams M3U8 -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body { 
       font-family: Arial, sans-serif; 
       background: #000; 
@@ -14,14 +44,21 @@
       overflow: hidden;
     }
     
+    /* Container do vídeo */
     #videoContainer {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #000;
     }
     
-    video {
+    #videoPlayer {
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -77,24 +114,7 @@
       border-color: #f00;
     }
     
-    #progressContainer {
-      position: fixed;
-      bottom: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 80%;
-      opacity: 1;
-      transition: opacity 0.3s ease;
-      z-index: 100;
-    }
     
-    #progressContainer.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
     
     #progress {
       flex: 1;
@@ -149,39 +169,94 @@
     #loadingMessage.hidden {
       display: none;
     }
-    
-    #playButton {
-      margin-top: 20px;
-      padding: 15px 40px;
-      font-size: 20px;
-      background: #0f0;
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    
-    #playButton:hover {
-      background: #0c0;
-      transform: scale(1.05);
-    }
-    
-    #playButton:focus {
-      outline: 3px solid #fff;
+
+    #errorMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(139, 0, 0, 0.95);
+      color: #fff;
+      padding: 40px 60px;
+      border-radius: 12px;
+      font-size: 18px;
+      text-align: center;
+      z-index: 200;
+      border: 2px solid #f00;
+      display: none;
     }
   </style>
 </head>
 <body>
+  <!-- Container do vídeo -->
   <div id="videoContainer">
-    <video id="videoPlayer" preload="auto" playsinline></video>
+    <video id="videoPlayer" controls></video>
   </div>
 
   <div id="loadingMessage">
     <div>⏳ Carregando canal...</div>
     <div id="loadingDetails" style="margin-top: 10px; font-size: 14px; color: #999;"></div>
-    <button id="playButton" style="display:none;">▶️ REPRODUZIR</button>
   </div>
+
+  <div id="errorMessage">
+    <div id="errorText">❌ Erro ao carregar stream</div>
+  </div>
+
+  <!-- Botão de play inicial para permitir autoplay -->
+  <div id="playButton" style="
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #00c851 0%, #007E33 100%);
+    color: #fff;
+    padding: 50px 100px;
+    border-radius: 25px;
+    font-size: 24px;
+    text-align: center;
+    z-index: 300;
+    cursor: pointer;
+    border: 4px solid #0f0;
+    display: none;
+    user-select: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0, 255, 0, 0.4);
+    animation: pulse 2s infinite;
+  " 
+     tabindex="0"
+     onmouseover="this.style.transform='translate(-50%, -50%) scale(1.05)'; this.style.boxShadow='0 15px 50px rgba(0, 255, 0, 0.6)'" 
+     onmouseout="this.style.transform='translate(-50%, -50%) scale(1)'; this.style.boxShadow='0 10px 40px rgba(0, 255, 0, 0.4)'">
+    <div style="font-size: 64px; margin-bottom: 15px; animation: bounce 1s infinite;">▶️</div>
+    <div style="font-weight: bold; font-size: 28px;">Clique para Reproduzir</div>
+    <div style="font-size: 16px; margin-top: 15px; opacity: 0.9;">
+      <span id="channelNamePreview" style="color: #ffeb3b; font-weight: bold;"></span>
+    </div>
+    <div style="font-size: 13px; margin-top: 10px; opacity: 0.7;">
+      Pressione Enter ou Espaço
+    </div>
+  </div>
+
+  <style>
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    #playButton:focus {
+      outline: none;
+      border-color: #ffeb3b;
+      box-shadow: 0 15px 50px rgba(255, 235, 59, 0.6);
+    }
+    
+    #playButton:active {
+      transform: translate(-50%, -50%) scale(0.95) !important;
+    }
+  </style>
 
   <div id="channelTitle">📺 Carregando...</div>
 
@@ -201,12 +276,12 @@
   </div>
 
   <script>
-    console.log('═══════════════════════════════════════');
-    console.log('🚀 PLAYER INICIADO');
-    console.log('═══════════════════════════════════════');
+    console.log('╔═══════════════════════════════════════╗');
+    console.log('🚀 PLAYER WEB INICIADO');
+    console.log('╚═══════════════════════════════════════╝');
 
     // Elementos
-    const video = document.getElementById('videoPlayer');
+    const videoPlayer = document.getElementById('videoPlayer');
     const controls = document.getElementById('controls');
     const progressContainer = document.getElementById('progressContainer');
     const channelTitle = document.getElementById('channelTitle');
@@ -215,7 +290,10 @@
     const buttons = Array.from(controls.querySelectorAll('button'));
     const loadingMessage = document.getElementById('loadingMessage');
     const loadingDetails = document.getElementById('loadingDetails');
+    const errorMessage = document.getElementById('errorMessage');
+    const errorText = document.getElementById('errorText');
     const playButton = document.getElementById('playButton');
+    const channelNamePreview = document.getElementById('channelNamePreview');
 
     // Estado
     let hls = null;
@@ -223,44 +301,11 @@
     let hideTimer = null;
     let playlist = [];
     let currentIndex = 0;
-    let playerReady = false;
-    let autoplayBlocked = false;
-    let shouldAutoplay = false;
-
-    // 🎯 VERIFICAR INTENÇÃO DE AUTOPLAY
-    function checkAutoplayIntent() {
-        const params = new URLSearchParams(window.location.search);
-        const autoplayParam = params.get('autoplay');
-        
-        const userInteracted = sessionStorage.getItem('userInteracted');
-        const autoplayIntent = sessionStorage.getItem('autoplayIntent');
-        const audioUnlocked = sessionStorage.getItem('audioUnlocked');
-        
-        console.log('🔍 Verificando intenção de autoplay:');
-        console.log('   - URL param:', autoplayParam);
-        console.log('   - userInteracted:', userInteracted);
-        console.log('   - autoplayIntent:', autoplayIntent);
-        console.log('   - audioUnlocked:', audioUnlocked);
-        
-        // Se tem parâmetro autoplay=1 OU flags de sessão
-        if (autoplayParam === '1' || userInteracted === 'true' || autoplayIntent === 'true') {
-            console.log('✅ Intenção de autoplay detectada!');
-            shouldAutoplay = true;
-            
-            // Limpar flags
-            sessionStorage.removeItem('userInteracted');
-            sessionStorage.removeItem('userInteractionTime');
-            sessionStorage.removeItem('autoplayIntent');
-            
-            return true;
-        }
-        
-        console.log('⚠️ Sem intenção de autoplay');
-        return false;
-    }
-
-    // Verificar autoplay no início
-    shouldAutoplay = checkAutoplayIntent();
+    let currentUrl = '';
+    let userInteracted = false;
+    let pendingPlayUrl = null;
+    let pendingPlayName = null;
+    let autoplayAttempted = false;
 
     // ==========================================
     // PARÂMETROS DA URL
@@ -302,7 +347,6 @@
             playlistSize: savedState.playlist?.length || 0
           });
           
-          // Restaurar playlist
           if (savedState.playlist && Array.isArray(savedState.playlist)) {
             playlist = savedState.playlist;
             currentIndex = savedState.channelIndex || params.index || 0;
@@ -310,11 +354,7 @@
             console.log('✅ Playlist restaurada:', playlist.length, 'canais');
             console.log('✅ Índice atual:', currentIndex);
             return true;
-          } else {
-            console.warn('⚠️ Playlist não encontrada no estado');
           }
-        } else {
-          console.warn('⚠️ Nenhum estado salvo encontrado');
         }
       } catch (error) {
         console.error('❌ Erro ao carregar estado:', error);
@@ -323,68 +363,37 @@
       return false;
     }
 
-    // Tentar carregar estado
-    const stateLoaded = loadSavedState();
-
-    console.log('═══════════════════════════════════════');
-    console.log('📊 CONFIGURAÇÃO FINAL:');
-    console.log('  Canal:', params.name);
-    console.log('  Playlist:', playlist.length, 'canais');
-    console.log('  Índice:', currentIndex);
-    console.log('  Autoplay:', shouldAutoplay ? 'SIM ✅' : 'NÃO ⚠️');
-    console.log('═══════════════════════════════════════');
+    loadSavedState();
 
     // ==========================================
     // VOLTAR PARA LISTA DE CANAIS
     // ==========================================
     function backToChannels() {
-        console.log('═══════════════════════════════════════');
         console.log('🔙 VOLTANDO PARA LISTA DE CANAIS');
-        console.log('═══════════════════════════════════════');
         
-        // Parar player
-        if (hls) {
-            console.log('⏸️ Parando HLS...');
-            hls.destroy();
-            hls = null;
-        }
-        video.pause();
-        video.src = '';
+        stopPlayer();
         
-        // Usar StateManager se disponível
         if (typeof StateManager !== 'undefined') {
-            console.log('✅ Usando StateManager para voltar...');
             StateManager.markReturnFromPlayer();
-            
-            // Obter URL de retorno (index.html com hash se necessário)
             const returnUrl = StateManager.getReturnUrl();
-            console.log('📍 URL de retorno:', returnUrl);
             
             setTimeout(() => {
-                console.log('🚀 Redirecionando...');
                 window.location.href = returnUrl;
             }, 100);
         } else {
-            // Fallback: voltar para index.html
-            console.warn('⚠️ StateManager não disponível, usando fallback...');
             sessionStorage.setItem('returningFromPlayer', 'true');
-            
             setTimeout(() => {
                 window.location.href = 'index.html';
             }, 100);
         }
     }
 
-    // Botão de voltar
-    document.getElementById('btnBack').addEventListener('click', () => {
-        backToChannels();
-    });
+    document.getElementById('btnBack').addEventListener('click', backToChannels);
 
     // ==========================================
     // FORMATAR TEMPO
     // ==========================================
     function formatTime(seconds) {
-      if (!isFinite(seconds)) return '00:00';
       const m = Math.floor(seconds / 60).toString().padStart(2, '0');
       const s = Math.floor(seconds % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
@@ -408,223 +417,188 @@
 
     function showLoading(message) {
       loadingMessage.classList.remove('hidden');
+      errorMessage.style.display = 'none';
       loadingDetails.textContent = message || '';
-      if (autoplayBlocked) {
-        playButton.style.display = 'block';
-      }
     }
 
     function hideLoading() {
       loadingMessage.classList.add('hidden');
-      playButton.style.display = 'none';
     }
 
-    // ==========================================
-    // TENTAR REPRODUZIR (com tentativas múltiplas)
-    // ==========================================
-    function tryPlay() {
-      console.log('▶️ Tentando reproduzir...');
-      console.log('   - shouldAutoplay:', shouldAutoplay);
-      console.log('   - video.muted:', video.muted);
+    function showError(message) {
+      errorText.textContent = message;
+      errorMessage.style.display = 'block';
+      loadingMessage.classList.add('hidden');
       
-      // Se deve tentar autoplay
-      if (shouldAutoplay) {
-        console.log('🎯 Tentativa 1: Play com áudio');
-        
-        return video.play()
-          .then(() => {
-            isPlaying = true;
-            playerReady = true;
-            autoplayBlocked = false;
-            document.getElementById('playpause').textContent = '⏸ Pause';
-            console.log('✅ Reproduzindo com áudio!');
-            hideLoading();
-            showControls();
-          })
-          .catch(err => {
-            console.warn('⚠️ Tentativa 1 falhou:', err.message);
-            console.log('🎯 Tentativa 2: Play mutado');
-            
-            // Tentar mutado
-            video.muted = true;
-            return video.play()
-              .then(() => {
-                isPlaying = true;
-                playerReady = true;
-                autoplayBlocked = false;
-                document.getElementById('playpause').textContent = '⏸ Pause (Mudo)';
-                console.log('✅ Reproduzindo mutado!');
-                console.log('💡 Dica: Clique para ativar áudio');
-                hideLoading();
-                showControls();
-                
-                // Mensagem para usuário desmutar
-                channelTitle.textContent = '🔇 ' + params.name + ' (Clique para ativar som)';
-                
-                // Ao clicar, desmutar
-                const unmute = () => {
-                  video.muted = false;
-                  channelTitle.textContent = '📺 ' + params.name;
-                  document.getElementById('playpause').textContent = '⏸ Pause';
-                  document.removeEventListener('click', unmute);
-                  console.log('🔊 Áudio ativado!');
-                };
-                document.addEventListener('click', unmute, { once: true });
-              })
-              .catch(err2 => {
-                console.error('❌ Tentativa 2 falhou:', err2.message);
-                autoplayBlocked = true;
-                playerReady = true;
-                
-                // Mostrar botão manual
-                loadingDetails.textContent = '▶️ Clique no botão para reproduzir';
-                playButton.style.display = 'block';
-                playButton.focus();
-                
-                console.log('💡 Aguardando interação manual do usuário...');
-              });
-          });
-      } else {
-        // Não deve autoplay, apenas preparar
-        console.log('⏸️ Preparando player sem autoplay');
-        playerReady = true;
-        loadingDetails.textContent = '▶️ Clique no botão para reproduzir';
-        playButton.style.display = 'block';
-        playButton.focus();
-        return Promise.resolve();
-      }
+      setTimeout(() => {
+        errorMessage.style.display = 'none';
+      }, 5000);
     }
 
-    // Botão de play manual
-    playButton.addEventListener('click', () => {
-      console.log('👆 Usuário clicou em PLAY');
-      video.muted = false;
-      video.play()
-        .then(() => {
-          isPlaying = true;
-          autoplayBlocked = false;
-          document.getElementById('playpause').textContent = '⏸ Pause';
-          hideLoading();
-          showControls();
-          console.log('✅ Reproduzindo após interação');
-        })
-        .catch(err => {
-          console.error('❌ Erro ao reproduzir:', err);
-          loadingDetails.textContent = 'Erro: ' + err.message;
-        });
-    });
-
     // ==========================================
-    // PLAYER
+    // INICIALIZAR PLAYER COM AUTOPLAY
     // ==========================================
     function initPlayer(url, name) {
-      console.log('═══════════════════════════════════════');
+      console.log('╔═══════════════════════════════════════╗');
       console.log('🎬 INICIALIZANDO PLAYER');
       console.log('URL:', url);
       console.log('Nome:', name);
-      console.log('═══════════════════════════════════════');
+      console.log('User Interacted:', userInteracted);
+      console.log('╚═══════════════════════════════════════╝');
 
       if (!url || url.trim() === '') {
-        console.error('❌ URL inválida ou vazia');
-        channelTitle.textContent = '❌ URL inválida';
-        loadingDetails.textContent = 'URL do canal não foi fornecida';
+        console.error('❌ URL inválida');
+        showError('❌ URL inválida');
         return;
       }
 
       channelTitle.textContent = '📺 ' + name;
+      
+      // Sempre preparar o vídeo, mas só tocar após interação se necessário
       showLoading('Conectando ao stream...');
 
-      // Limpar player anterior
-      if (hls) {
-        console.log('🗑️ Destruindo HLS anterior');
-        hls.destroy();
-        hls = null;
-      }
-
-      // Resetar vídeo
-      video.pause();
-      video.src = '';
-      video.load();
-
-      // Verificar se é HLS (m3u8)
-      if (url.includes('.m3u8')) {
-        console.log('📡 Stream HLS detectado');
-        loadingDetails.textContent = 'Stream HLS - Carregando manifest...';
+      try {
+        stopPlayer();
+        currentUrl = url;
         
-        if (Hls.isSupported()) {
-          console.log('✅ HLS.js suportado');
-          
+        // Guardar para possível replay
+        pendingPlayUrl = url;
+        pendingPlayName = name;
+        
+        // Detectar tipo de stream
+        const isM3U8 = url.toLowerCase().includes('.m3u8') || url.toLowerCase().includes('m3u8');
+        const isMP4 = url.toLowerCase().endsWith('.mp4');
+        
+        if (isM3U8 && Hls.isSupported()) {
+          // Usar HLS.js para streams M3U8
+          console.log('📡 Usando HLS.js');
           hls = new Hls({
             enableWorker: true,
             lowLatencyMode: true,
-            backBufferLength: 90,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 600,
-            debug: false
+            backBufferLength: 90
           });
-
-          hls.on(Hls.Events.MANIFEST_LOADING, () => {
-            console.log('📡 Carregando manifest...');
-            loadingDetails.textContent = 'Baixando manifest M3U8...';
-          });
-
-          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+          
+          hls.loadSource(url);
+          hls.attachMedia(videoPlayer);
+          
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
             console.log('✅ Manifest carregado');
-            console.log('   Níveis:', data.levels.length);
-            loadingDetails.textContent = 'Manifest carregado, iniciando reprodução...';
-            
-            // Tentar autoplay
-            tryPlay();
+            tryAutoplay();
           });
-
+          
           hls.on(Hls.Events.ERROR, (event, data) => {
-            console.error('❌ HLS Error:', data.type, data.details);
-            
+            console.error('❌ Erro HLS:', data.type, data.details);
             if (data.fatal) {
-              loadingDetails.textContent = `Erro fatal: ${data.type} - ${data.details}`;
-              
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  console.log('🔄 Tentando recuperar erro de rede...');
-                  loadingDetails.textContent = 'Erro de rede, tentando reconectar...';
-                  hls.startLoad();
+                  showError('❌ Erro de rede');
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  console.log('🔄 Tentando recuperar erro de mídia...');
-                  loadingDetails.textContent = 'Erro de mídia, tentando recuperar...';
+                  showError('❌ Erro de mídia');
                   hls.recoverMediaError();
                   break;
                 default:
-                  console.error('❌ Erro fatal irrecuperável');
-                  channelTitle.textContent = '❌ Erro ao reproduzir';
-                  loadingDetails.textContent = 'Erro irrecuperável. Tente recarregar.';
-                  hls.destroy();
+                  showError('❌ Erro fatal no stream');
+                  stopPlayer();
                   break;
               }
             }
           });
-
-          console.log('🔗 Carregando source:', url);
-          hls.loadSource(url);
-          hls.attachMedia(video);
-
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          console.log('✅ HLS nativo suportado (Safari)');
-          loadingDetails.textContent = 'Usando HLS nativo...';
-          video.src = url;
-          tryPlay();
+          
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl') || isMP4) {
+          // Suporte nativo (Safari) ou MP4
+          console.log('📡 Usando reprodução nativa');
+          videoPlayer.src = url;
+          
+          videoPlayer.addEventListener('loadedmetadata', () => {
+            console.log('✅ Metadados carregados');
+            tryAutoplay();
+          }, { once: true });
+          
+          videoPlayer.addEventListener('error', (e) => {
+            console.error('❌ Erro no vídeo:', e);
+            showError('❌ Erro ao carregar stream');
+          });
+          
         } else {
-          console.error('❌ HLS não suportado');
-          channelTitle.textContent = '❌ HLS não suportado';
-          loadingDetails.textContent = 'Seu navegador não suporta streams M3U8';
+          showError('❌ Formato não suportado neste navegador');
         }
+        
+      } catch (e) {
+        console.error('❌ Exceção:', e.message);
+        showError('❌ Erro ao inicializar: ' + e.message);
+      }
+    }
 
-      } else {
-        // Vídeo direto (mp4, etc)
-        console.log('🎥 Vídeo direto detectado');
-        loadingDetails.textContent = 'Carregando vídeo direto...';
-        video.src = url;
-        tryPlay();
+    // ==========================================
+    // TENTAR AUTOPLAY
+    // ==========================================
+    function tryAutoplay() {
+      if (autoplayAttempted) {
+        console.log('⚠️ Autoplay já foi tentado');
+        return;
+      }
+      
+      autoplayAttempted = true;
+      console.log('🎬 Tentando autoplay...');
+      
+      videoPlayer.play().then(() => {
+        console.log('✅ Autoplay bem-sucedido!');
+        isPlaying = true;
+        document.getElementById('playpause').textContent = '⏸ Pause';
+        hideLoading();
+        showControls();
+        userInteracted = true;
+      }).catch(error => {
+        console.warn('⚠️ Autoplay bloqueado:', error.name);
+        
+        if (error.name === 'NotAllowedError') {
+          // Mostrar botão de play
+          console.log('📺 Mostrando botão de play');
+          channelNamePreview.textContent = pendingPlayName;
+          playButton.style.display = 'block';
+          hideLoading();
+        } else {
+          showError('❌ Erro ao iniciar reprodução');
+        }
+      });
+    }
+
+    // ==========================================
+    // INICIAR REPRODUÇÃO MANUAL
+    // ==========================================
+    function startPlayback() {
+      console.log('▶️ Iniciando reprodução manual');
+      autoplayAttempted = false; // Reset para tentar novamente
+      
+      videoPlayer.play().then(() => {
+        console.log('✅ Reprodução iniciada!');
+        isPlaying = true;
+        document.getElementById('playpause').textContent = '⏸ Pause';
+        playButton.style.display = 'none';
+        showControls();
+        userInteracted = true;
+      }).catch(error => {
+        console.error('❌ Erro ao reproduzir:', error);
+        showError('❌ Erro ao iniciar: ' + error.message);
+      });
+    }
+
+    // ==========================================
+    // PARAR PLAYER
+    // ==========================================
+    function stopPlayer() {
+      try {
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        videoPlayer.pause();
+        videoPlayer.src = '';
+        isPlaying = false;
+        currentUrl = '';
+      } catch (e) {
+        console.warn('⚠️ Erro ao parar:', e);
       }
     }
 
@@ -632,38 +606,34 @@
     // CONTROLES DE REPRODUÇÃO
     // ==========================================
     function togglePlayPause() {
-      if (isPlaying) {
-        video.pause();
-        isPlaying = false;
-        document.getElementById('playpause').textContent = '▶️ Play';
-        console.log('⏸ Pausado');
-      } else {
-        video.play();
-        isPlaying = true;
-        document.getElementById('playpause').textContent = '⏸ Pause';
-        console.log('▶️ Reproduzindo');
+      try {
+        if (videoPlayer.paused) {
+          videoPlayer.play();
+          isPlaying = true;
+          document.getElementById('playpause').textContent = '⏸ Pause';
+        } else {
+          videoPlayer.pause();
+          isPlaying = false;
+          document.getElementById('playpause').textContent = '▶️ Play';
+        }
+        showControls();
+      } catch (e) {
+        console.error('❌ Erro:', e);
       }
-      showControls();
     }
 
     function seek(seconds) {
-      if (video.duration && isFinite(video.duration)) {
-        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+      try {
+        videoPlayer.currentTime = Math.max(0, Math.min(videoPlayer.duration, videoPlayer.currentTime + seconds));
         showControls();
-        console.log('⏩ Seek:', video.currentTime);
+      } catch (e) {
+        console.warn('⚠️ Seek não disponível');
       }
     }
 
     function reload() {
-      console.log('🔄 Recarregando canal...');
-      const currentTime = video.currentTime;
-      shouldAutoplay = true; // Permitir autoplay no reload
-      initPlayer(params.url, params.name);
-      setTimeout(() => {
-        if (currentTime > 0) {
-          video.currentTime = currentTime;
-        }
-      }, 1000);
+      console.log('🔄 Recarregando...');
+      initPlayer(currentUrl, params.name);
     }
 
     // ==========================================
@@ -672,10 +642,6 @@
     function switchChannel(offset) {
       if (playlist.length === 0) {
         console.warn('⚠️ Playlist vazia');
-        channelTitle.textContent = '⚠️ Sem playlist disponível';
-        setTimeout(() => {
-          channelTitle.textContent = '📺 ' + params.name;
-        }, 2000);
         return;
       }
 
@@ -683,40 +649,22 @@
       const nextChannel = playlist[currentIndex];
 
       if (!nextChannel || !nextChannel.url) {
-        console.warn('❌ Canal inválido no índice', currentIndex);
+        console.warn('❌ Canal inválido');
         return;
       }
 
-      console.log(`🔄 Mudando para canal ${currentIndex + 1}/${playlist.length}: ${nextChannel.name}`);
+      console.log(`🔄 Canal ${currentIndex + 1}/${playlist.length}: ${nextChannel.name}`);
 
-      // Atualizar estado no StateManager
       if (typeof StateManager !== 'undefined') {
         StateManager.updateChannelIndex(currentIndex);
       }
 
-      // Atualizar parâmetros
       params.url = nextChannel.url;
       params.name = nextChannel.name;
       params.index = currentIndex;
 
-      // Permitir autoplay na troca de canais
-      shouldAutoplay = true;
-
-      // Reiniciar player
+      autoplayAttempted = false; // Reset para novo canal
       initPlayer(nextChannel.url, nextChannel.name);
-    }
-
-    // ==========================================
-    // PROGRESS BAR
-    // ==========================================
-    function updateProgress() {
-      if (video.duration && isFinite(video.duration)) {
-        progress.value = (video.currentTime / video.duration) * 100;
-        timeLabel.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
-      } else {
-        timeLabel.textContent = `${formatTime(video.currentTime)} / --:--`;
-      }
-      requestAnimationFrame(updateProgress);
     }
 
     // ==========================================
@@ -730,73 +678,26 @@
     document.getElementById('next').addEventListener('click', () => switchChannel(1));
 
     progress.addEventListener('input', () => {
-      if (video.duration && isFinite(video.duration)) {
-        video.currentTime = (progress.value / 100) * video.duration;
-      }
-    });
-
-    // ==========================================
-    // EVENTOS DE VÍDEO
-    // ==========================================
-    video.addEventListener('play', () => {
-      isPlaying = true;
-      document.getElementById('playpause').textContent = '⏸ Pause';
-    });
-
-    video.addEventListener('pause', () => {
-      isPlaying = false;
-      document.getElementById('playpause').textContent = '▶️ Play';
-    });
-
-    video.addEventListener('ended', () => {
-      console.log('✅ Vídeo terminou');
-      if (playlist.length > 1) {
-        console.log('⏭ Próximo canal automático');
-        switchChannel(1);
-      }
-    });
-
-    video.addEventListener('loadstart', () => {
-      console.log('📡 Iniciando carregamento...');
-    });
-
-    video.addEventListener('loadedmetadata', () => {
-      console.log('✅ Metadados carregados');
-      console.log('   Duração:', formatTime(video.duration));
-    });
-
-    video.addEventListener('canplay', () => {
-      console.log('✅ Pronto para reproduzir');
-    });
-
-    video.addEventListener('waiting', () => {
-      console.log('⏳ Aguardando buffer...');
-      showLoading('Aguardando dados...');
-    });
-
-    video.addEventListener('playing', () => {
-      console.log('▶️ Reproduzindo...');
-      hideLoading();
+      try {
+        if (videoPlayer.duration) {
+          videoPlayer.currentTime = (progress.value / 100) * videoPlayer.duration;
+        }
+      } catch (e) {}
     });
 
     // ==========================================
     // TECLADO
     // ==========================================
     document.addEventListener('keydown', (e) => {
-      console.log('🎮 Tecla:', e.key, 'keyCode:', e.keyCode);
-
-      // BACKSPACE ou BACK - Voltar
-      if (e.key === 'Backspace' || e.keyCode === 10009 || e.key === 'Back') {
+      // BACK
+      if (e.key === 'Backspace' || e.key === 'Escape') {
         e.preventDefault();
-        console.log('🔙 Voltando para lista de canais...');
         backToChannels();
         return;
       }
 
-      // Mostrar controles
       showControls();
 
-      // Navegação entre botões
       const focused = document.activeElement;
       const idx = buttons.indexOf(focused);
 
@@ -833,66 +734,31 @@
           break;
 
         case ' ':
-        case 'MediaPlayPause':
           e.preventDefault();
           togglePlayPause();
           break;
-
-        case 'MediaPlay':
-          e.preventDefault();
-          if (!isPlaying) video.play();
-          break;
-
-        case 'MediaPause':
-          e.preventDefault();
-          if (isPlaying) video.pause();
-          break;
-
-        case 'MediaTrackNext':
-          e.preventDefault();
-          switchChannel(1);
-          break;
-
-        case 'MediaTrackPrevious':
-          e.preventDefault();
-          switchChannel(-1);
-          break;
       }
     });
 
-    // CH+/CH- por keyCode (TVs Samsung)
-    document.addEventListener('keydown', (e) => {
-      if (e.keyCode === 427) { // CH+
-        e.preventDefault();
-        switchChannel(1);
-      } else if (e.keyCode === 428) { // CH-
-        e.preventDefault();
-        switchChannel(-1);
-      }
-    });
-
-    // MOUSE/TOQUE - Qualquer clique tenta play se bloqueado
+    // Mostrar controles ao mover mouse
+    videoPlayer.addEventListener('mousemove', showControls);
     document.addEventListener('mousemove', showControls);
-    document.addEventListener('click', (e) => {
-      showControls();
-      
-      // Se autoplay foi bloqueado e usuário clicou, tentar play
-      if (autoplayBlocked && playerReady && !isPlaying) {
-        console.log('👆 Clique detectado, tentando reproduzir...');
-        shouldAutoplay = true;
-        video.muted = false;
-        tryPlay();
-      }
+
+    // ==========================================
+    // BOTÃO DE PLAY INICIAL
+    // ==========================================
+    playButton.addEventListener('click', () => {
+      console.log('✅ Usuário clicou no botão de play');
+      userInteracted = true;
+      startPlayback();
     });
-    document.addEventListener('touchstart', (e) => {
-      showControls();
-      
-      // Se autoplay foi bloqueado e usuário tocou, tentar play
-      if (autoplayBlocked && playerReady && !isPlaying) {
-        console.log('👆 Toque detectado, tentando reproduzir...');
-        shouldAutoplay = true;
-        video.muted = false;
-        tryPlay();
+
+    // Permitir Enter/Espaço no botão de play
+    playButton.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        userInteracted = true;
+        startPlayback();
       }
     });
 
@@ -900,35 +766,34 @@
     // INICIALIZAÇÃO
     // ==========================================
     window.addEventListener('load', () => {
-      console.log('═══════════════════════════════════════');
       console.log('✅ PÁGINA CARREGADA');
-      console.log('═══════════════════════════════════════');
 
-      // Verificar URL
-      if (!params.url || params.url.trim() === '') {
+      if (!params.url) {
         console.error('❌ URL não fornecida');
-        channelTitle.textContent = '❌ URL não fornecida';
-        loadingDetails.textContent = 'Parâmetro "url" está vazio ou ausente';
-        
-        // Tentar voltar após 3 segundos
-        setTimeout(() => {
-          console.log('🔙 Voltando para página anterior...');
-          backToChannels();
-        }, 3000);
+        showError('❌ URL não fornecida');
+        setTimeout(backToChannels, 3000);
         return;
       }
 
-      // Iniciar player
       setTimeout(() => {
         initPlayer(params.url, params.name);
-        updateProgress();
-        buttons[3].focus(); // Foco no play/pause (índice 3 agora por causa do botão Voltar)
+        
+        // Se botão de play aparecer, dar foco nele
+        const checkButton = setInterval(() => {
+          if (playButton.style.display === 'block') {
+            playButton.focus();
+            clearInterval(checkButton);
+          }
+        }, 100);
+        
+        // Limpar interval após 3 segundos
+        setTimeout(() => clearInterval(checkButton), 3000);
       }, 500);
     });
 
-    console.log('═══════════════════════════════════════');
+    window.addEventListener('beforeunload', stopPlayer);
+
     console.log('✅ PLAYER CONFIGURADO');
-    console.log('═══════════════════════════════════════');
   </script>
 </body>
 </html>
