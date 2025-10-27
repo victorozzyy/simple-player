@@ -41,7 +41,7 @@ const PlaylistModule = {
         {
             name: "🔥 Minha 02",
             description: "Lista 02",
-            url: "https://kinder5.live:80/get.php?username=26074042325&password=66287290983&type=m3u_plus"
+            url: "http://kinder5.live:80/get.php?username=26074042325&password=66287290983&type=m3u_plus"
         },
         {
             name: "🔥 Minha 03",
@@ -633,6 +633,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
 
 
 
