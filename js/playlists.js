@@ -28,7 +28,7 @@ const PlaylistModule = {
     
     // Playlists locais
     availablePlaylists: [
-        { name: "Lista01", filename: "lsta01.m3u8" },
+        { name: "Lista01", filename: "lista01.m3u8" },
         { name: "24 Hs", filename: "playlist_24h.m3u" }
     ],
     
@@ -634,6 +634,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 
 }
+
 
 
 
