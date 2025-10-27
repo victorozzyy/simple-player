@@ -19,9 +19,6 @@ const AppState = {
     remoteFocusIndex: -1,
     overlayFocusIndex: 0,
     
-    // Categoria atual (para retorno do player)
-    currentCategory: null,
-    
     // Cache
     cache: new Map(),
     cacheTimestamps: new Map(),
@@ -46,11 +43,6 @@ const AppState = {
     setCurrentChannel(channel, index) {
         this.currentChannel = channel;
         this.currentChannelIndex = index;
-        
-        // Salvar categoria do canal
-        if (channel && channel.group) {
-            this.currentCategory = channel.group;
-        }
     },
     
     resetChannelPosition() {
@@ -85,7 +77,6 @@ const AppState = {
         this.lastPosition = 0;
         this.currentView = 'buttons';
         this.focusIndex = 0;
-        this.currentCategory = null;
     }
 };
 
