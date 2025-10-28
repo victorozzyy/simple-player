@@ -95,66 +95,7 @@ const PlaylistModule = {
       },
 	  
       
-      {
-        name: "🎭 Educativo",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/educativo.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Aqueles",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/aqules.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Educativo3",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/new.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 teste",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/teste.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional00",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/teste2.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria2.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional4 Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria3.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional Pov Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria4.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 Funcional3 Mp4",
-        description: "Canais de séries, filmes e shows",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/putria.m3u8",
-        category: "Pt"
-      },
-      {
-        name: "🎭 NovoPono Instavel",
-        description: "Conteúdo seguro para crianças",
-        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/novopono.m3u8",
-        category: "Pt"
-      },
+
 	  {
         name: "👶 Desenhos",
         description: "Conteúdo seguro para crianças",
@@ -876,5 +817,6 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 console.log('✅ PlaylistModule carregado (v3.0 - com suporte CORS)');
+
 
 
