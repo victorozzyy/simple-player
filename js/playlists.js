@@ -165,9 +165,9 @@ const PlaylistModule = {
     
      // Playlists locais
     availablePlaylists: [
-        { name: "24Hs", filename: "playlist_24h.m3u" },
-        { name: "An", filename: "playlist_Anonymous100_plus02.m3u" },
-        { name: "teste", filename: "test.m3u" }
+        { name: "Lista 01", filename: "lista01.m3u8" },
+       
+        { name: "Lista 02", filename: "lista02.m3u" }
     ],
     
     // Minhas Listas (personalizadas) - COM MARCAÇÃO CORS
@@ -876,4 +876,5 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 console.log('✅ PlaylistModule carregado (v3.0 - com suporte CORS)');
+
 
