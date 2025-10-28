@@ -4,20 +4,22 @@
   <meta charset="utf-8"/>
   <title>Player</title>
   <link rel="stylesheet" href="css/stylem3u8.css">
-  <!-- HLS.js para reprodução de streams m3u8 -->
+ 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
   <h2>🎬 Player</h2>
 
   <div class="section" style="display:flex; flex-wrap: wrap; gap: 10px;">
-   <button class="navigable" id="btnMinhasListas" tabindex="0">🔥 Minhas Listas</button>
+   <button class="navigable" id="btnMinhasListas" tabindex="0">🔥 Listas</button>
    <button class="navigable" id="btnLoadPlaylist" tabindex="0">📡 Playlists Remotas</button>
-   
+   <button class="navigable" id="btnUpload" tabindex="0">📤 Upload Arquivo</button>
+   <button class="navigable" id="btnLocal" tabindex="0">📁 Playlists Locais</button>
+   <!-- 
     <button class="navigable" id="btnSingle" tabindex="0">🔗 Canal Único</button>
-    <button class="navigable" id="btnUpload" tabindex="0">📤 Upload Arquivo</button>
-    <button class="navigable" id="btnLocal" tabindex="0">📁 Playlists Locais</button>
-  
+    -->
+    
+    
   </div>
 
   <div class="section" id="remotePlaylistSelector" style="display:none; margin-top:10px;">
