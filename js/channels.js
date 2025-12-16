@@ -1,146 +1,107 @@
-// channels.js - Gerenciamento de canais COM OVERLAY E BUSCA
-// Versão 3.2 - CORRIGIDO - Cliques funcionando
+// channels.js - Gerenciamento de canais COM NAVEGAÇÃO EM 3 NÍVEIS
+// Versão 5.2 - Foco correto ao voltar do player
 
 const ChannelModule = {
     channelList: null,
     messageArea: null,
     messageTimeout: null,
-    
+
+    MAX_PER_SUBCATEGORY: 1000,
+
     init() {
-        console.log('🔧 ChannelModule.init()');
         this.channelList = document.getElementById('channelList');
+        
+        // 🔔 Retorno do player
+        window.addEventListener("player-closed", () => {
+            this.handleReturnFromPlayer();
+        });
+
         this.messageArea = document.getElementById('messageArea');
-        
-        if (!this.channelList) {
-            console.error('❌ channelList não encontrado no DOM');
-        }
-        
-        if (!this.messageArea) {
-            console.warn('⚠️ messageArea não encontrado - mensagens não serão exibidas');
-        }
-        
-        // Inicializar SearchModule se disponível (mas não mostrar ainda)
+
         if (typeof SearchModule !== 'undefined') {
             SearchModule.init();
-            console.log('✅ SearchModule inicializado junto com ChannelModule');
         }
-        
-        console.log('✅ ChannelModule inicializado');
+
+        console.log('✅ ChannelModule inicializado (v5.2 - Foco correto ao voltar do player)');
     },
     
+    showMessage(text, duration = 3000) {
+        if (!this.messageArea) {
+            this.messageArea = document.getElementById('messageArea');
+        }
+
+        if (!this.messageArea) {
+            console.warn('messageArea não encontrada');
+            return;
+        }
+
+        this.messageArea.textContent = text;
+        this.messageArea.style.display = 'block';
+
+        clearTimeout(this.messageTimeout);
+        this.messageTimeout = setTimeout(() => {
+            this.messageArea.style.display = 'none';
+        }, duration);
+    },
+
     // ========================================
-    // 📺 ATUALIZAR LISTA DE CANAIS
+    // 📺 ATUALIZAR LISTA DE CANAIS (NÍVEL 1: CATEGORIAS)
     // ========================================
     updateChannelList() {
-        try {
-            if (!this.channelList) {
-                console.error('❌ channelList não disponível');
-                return;
-            }
+        const playlist = AppState.currentPlaylist || [];
 
-            // Usar AppState.currentPlaylist ao invés de AppState.playlist
-            const playlist = AppState.currentPlaylist || [];
+        if (!playlist.length) {
+            this.channelList.innerHTML = '<li class="no-channels">Nenhuma playlist carregada</li>';
+            if (SearchModule) SearchModule.hide();
+            return;
+        }
 
-            if (playlist.length === 0) {
-                this.channelList.innerHTML = '<li class="no-channels">🔭 Nenhuma playlist carregada</li>';
-                AppState.channelItems = [];
-                
-                // Esconder SearchModule se não há canais
-                if (typeof SearchModule !== 'undefined') {
-                    SearchModule.hide();
-                }
-                return;
-            }
+        const grouped = this.groupWithSubcategories(playlist);
+        const fragment = document.createDocumentFragment();
 
-            console.log('🔄 Atualizando lista de canais:', playlist.length);
-            
-            const fragment = document.createDocumentFragment();
-            
-            // Header com nome da playlist
-            if (AppState.currentPlaylistName) {
-                const header = document.createElement('li');
-                header.textContent = `📂 Playlist: ${AppState.currentPlaylistName}`;
-                header.style.cssText = 'color: #00e676; padding: 15px 10px; font-weight: bold; font-size: 1.1em; list-style: none;';
-                fragment.appendChild(header);
-            }
-            
-            // Categoria "Todos os Canais"
-            const allHeader = this.createCategoryHeader('Todos os Canais', playlist.length);
-            fragment.appendChild(allHeader);
-            
-            // Agrupar por categoria
-            const grouped = this.groupByCategory(playlist);
-            const sortedGroups = Object.keys(grouped).sort();
-            
-            sortedGroups.forEach(group => {
-                const header = this.createCategoryHeader(group, grouped[group].length);
-                fragment.appendChild(header);
-            });
-            
-            // Atualizar DOM
-            this.channelList.innerHTML = '';
-            this.channelList.appendChild(fragment);
-            
-            // IMPORTANTE: Adicionar eventos DEPOIS de adicionar ao DOM
-            const allCategoryHeader = document.querySelector('.category-header[data-group="Todos os Canais"]');
-            if (allCategoryHeader) {
-                allCategoryHeader.addEventListener('click', () => {
-                    console.log('📺 Clique: Todos os Canais');
-                    this.showCategoryOverlay('Todos os Canais', playlist);
-                });
-            }
-            
-            sortedGroups.forEach(group => {
-                const categoryHeader = document.querySelector(`.category-header[data-group="${group}"]`);
-                if (categoryHeader) {
-                    categoryHeader.addEventListener('click', () => {
-                        console.log('📂 Clique:', group);
-                        this.showCategoryOverlay(group, grouped[group]);
-                    });
-                }
-            });
-            
-            // Atualizar referências
-            AppState.channelItems = Array.from(document.querySelectorAll('.category-header'));
-            AppState.currentView = 'channels';
-            
-            // Mostrar SearchModule se disponível
-            if (typeof SearchModule !== 'undefined') {
-                SearchModule.show();
-            }
-            
-            // Focar primeiro elemento
-            setTimeout(() => {
-                if (AppState.channelItems.length > 0) {
-                    NavigationModule.setFocusElement(AppState.channelItems[0]);
-                }
-            }, 100);
-            
-            console.log(`✅ ${AppState.channelItems.length} categorias renderizadas`);
-            this.showMessage(`✅ ${playlist.length} canais carregados`, 'success');
-            
-        } catch (error) {
-            console.error('❌ Erro ao atualizar lista de canais:', error);
-            this.showMessage('❌ Erro ao atualizar canais', 'error');
+        // Header com nome da playlist
+        if (AppState.currentPlaylistName) {
+            const header = document.createElement('li');
+            header.textContent = `📂 Playlist: ${AppState.currentPlaylistName}`;
+            header.style.cssText = 'color:#00e676;padding:15px;font-weight:bold;list-style:none;';
+            fragment.appendChild(header);
+        }
+
+        // Criar headers de categorias
+        Object.keys(grouped).sort().forEach(category => {
+            const total = grouped[category].reduce((a, b) => a + b.channels.length, 0);
+            const header = this.createCategoryHeader(category, total, grouped[category]);
+            fragment.appendChild(header);
+        });
+
+        this.channelList.innerHTML = '';
+        this.channelList.appendChild(fragment);
+
+        AppState.currentView = 'channels';
+        AppState.channelItems = Array.from(document.querySelectorAll('.category-header'));
+
+        if (SearchModule) SearchModule.show();
+        
+        if (AppState.channelItems.length > 0) {
+            NavigationModule.setFocusElement(AppState.channelItems[0]);
         }
     },
-    
+
     // ========================================
-    // 📂 CRIAR HEADER DE CATEGORIA
+    // 📋 CRIAR HEADER DE CATEGORIA (NÍVEL 1)
     // ========================================
-    createCategoryHeader(groupName, count) {
-        const header = document.createElement('li');
-        header.className = 'category-header';
-        header.setAttribute('tabindex', '0');
-        header.setAttribute('role', 'button');
-        header.dataset.group = groupName;
+    createCategoryHeader(name, count, subcategories) {
+        const li = document.createElement('li');
+        li.className = 'category-header';
+        li.tabIndex = 0;
+        li.dataset.group = name;
+
+        const emoji = name === 'Todos os Canais' ? '📺' : '📁';
         
-        const emoji = groupName === 'Todos os Canais' ? '📺' : '📁';
-        const color = groupName === 'Todos os Canais' ? '#ffeb3b' : '#6bff6b';
+        li.innerHTML = `<strong>${emoji} ${name} (${count} canais)</strong>`;
         
-        header.innerHTML = `<strong class="cat-label">${emoji} ${groupName} (${count} canais)</strong>`;
-        header.style.cssText = `
-            color: ${color};
+        li.style.cssText = `
+            color: #6bff6b;
             padding: 15px 10px;
             border-bottom: 2px solid #333;
             cursor: pointer;
@@ -149,115 +110,239 @@ const ChannelModule = {
             margin-bottom: 5px;
             list-style: none;
         `;
-        
-        return header;
+
+        // Ao clicar, abre overlay com SUBCATEGORIAS
+        li.onclick = () => {
+            this.showSubcategoryOverlay(name, subcategories);
+        };
+
+        li.onkeydown = e => {
+            if (e.key === 'Enter') li.click();
+        };
+
+        return li;
     },
-    
+
     // ========================================
-    // 📂 AGRUPAR POR CATEGORIA
+    // 🧠 AGRUPAMENTO COM SUBCATEGORIAS
     // ========================================
-    groupByCategory(channels) {
-        const groups = {};
-        
-        channels.forEach(channel => {
-            const group = channel.group || 'Outros';
-            if (!groups[group]) {
-                groups[group] = [];
-            }
-            groups[group].push(channel);
+    groupWithSubcategories(channels) {
+        const categories = {};
+
+        channels.forEach(ch => {
+            const cat = ch.group || 'Outros';
+            if (!categories[cat]) categories[cat] = {};
+            const series = this.extractSeriesName(ch.name) || 'OUTROS';
+
+            if (!categories[cat][series]) categories[cat][series] = [];
+            categories[cat][series].push(ch);
         });
-        
-        return groups;
-    },
-    
-    // ========================================
-    // 📺 MOSTRAR OVERLAY DE CATEGORIA (COM VIRTUALIZAÇÃO)
-    // ========================================
-    showCategoryOverlay(groupName, channels) {
-        try {
-            console.log(`📺 Abrindo overlay: ${groupName} (${channels.length} canais)`);
-            
-            // Salvar categoria atual no AppState
-            AppState.currentCategory = groupName;
-            
-            const overlay = this.createOverlayElement();
-            const title = document.getElementById('overlayTitle');
-            const grid = document.getElementById('overlayChannelGrid');
-            
-            title.textContent = `📺 ${groupName} (${channels.length} canais)`;
-            
-            grid.innerHTML = '';
-            AppState.overlayChannels = [];
-            
-            // OTIMIZAÇÃO: Se tem mais de 1000 canais, renderizar apenas os primeiros
-            const MAX_INITIAL_RENDER = 1000;
-            const channelsToRender = channels.length > MAX_INITIAL_RENDER 
-                ? channels.slice(0, MAX_INITIAL_RENDER) 
-                : channels;
-            
-            if (channels.length > MAX_INITIAL_RENDER) {
-                console.log(`⚡ Modo virtualizado: renderizando ${MAX_INITIAL_RENDER} de ${channels.length} canais`);
-                
-                // Adicionar aviso
-                const notice = document.createElement('div');
-                notice.style.cssText = `
-                    padding: 15px;
-                    background: #ff9800;
-                    color: black;
-                    border-radius: 5px;
-                    margin-bottom: 10px;
-                    font-weight: bold;
-                `;
-                notice.textContent = `⚡ Lista grande! Mostrando primeiros ${MAX_INITIAL_RENDER} canais. Use a busca (tecla S) para encontrar canais específicos.`;
-                grid.appendChild(notice);
-            }
-            
-            channelsToRender.forEach((channel) => {
-                const channelDiv = this.createChannelItem(channel);
-                grid.appendChild(channelDiv);
-                AppState.overlayChannels.push(channelDiv);
+
+        const result = {};
+
+        Object.keys(categories).forEach(cat => {
+            result[cat] = [];
+
+            Object.keys(categories[cat]).forEach(series => {
+                const list = categories[cat][series];
+
+                // Se tem muitos canais, dividir em partes
+                if (list.length > this.MAX_PER_SUBCATEGORY) {
+                    let part = 1;
+                    for (let i = 0; i < list.length; i += this.MAX_PER_SUBCATEGORY) {
+                        result[cat].push({
+                            name: `${series} - Parte ${part}`,
+                            channels: list.slice(i, i + this.MAX_PER_SUBCATEGORY)
+                        });
+                        part++;
+                    }
+                } else {
+                    result[cat].push({
+                        name: series,
+                        channels: list
+                    });
+                }
             });
-            
-            overlay.style.display = 'block';
-            AppState.currentView = 'overlay';
-            AppState.overlayFocusIndex = 0;
-            
-            if (AppState.overlayChannels.length > 0) {
-                this.setOverlayFocus(0);
-            }
-            
-            const renderMsg = channels.length > MAX_INITIAL_RENDER 
-                ? `${MAX_INITIAL_RENDER} de ${channels.length} canais carregados (use busca para mais)`
-                : `${channels.length} canais carregados`;
-            
-            this.showMessage(`📋 ${groupName}: ${renderMsg}`, 'success');
-            
-        } catch (error) {
-            console.error('Erro ao abrir categoria:', error);
-            this.showMessage('❌ Erro ao abrir categoria', 'error');
-        }
+        });
+
+        return result;
     },
-    
-    // ========================================
-    // 🎬 CRIAR ITEM DE CANAL
-    // ========================================
-    createChannelItem(channel) {
-        const channelDiv = document.createElement('div');
-        channelDiv.className = 'overlay-channel-item';
-        channelDiv.tabIndex = 0;
-        channelDiv.dataset.url = channel.url;
-        channelDiv.dataset.name = channel.name;
-        channelDiv.dataset.group = channel.group || 'Outros';
-        
-        // CORREÇÃO: Encontrar índice no array ATUAL (não no global)
-        // Verificar se currentPlaylist é array válido
-        let originalIndex = -1;
-        if (Array.isArray(AppState.currentPlaylist)) {
-            originalIndex = AppState.currentPlaylist.findIndex(ch => ch.url === channel.url);
+
+    // Extrai nome da série (sem episódio)
+    extractSeriesName(name) {
+        if (!name) return null;
+
+        let clean = name
+            .replace(/\s*[\(\[]?(S\d+E\d+|\d+x\d+|EP\s*\d+|EPISÓDIO\s*\d+)[\)\]]?/gi, '')
+            .replace(/\s*[-—_]\s*\d+$/g, '')
+            .replace(/\s*\d+$/g, '')
+            .trim();
+
+        // Evita falsos positivos
+        if (clean.length < 4 || clean === name.trim()) {
+            return null;
         }
-        channelDiv.dataset.index = originalIndex;
-        
-        channelDiv.style.cssText = `
+
+        return clean;
+    },
+
+    // ========================================
+    // 📂 OVERLAY DE SUBCATEGORIAS (NÍVEL 2)
+    // ========================================
+    showSubcategoryOverlay(categoryName, subcategories) {
+        const overlay = this.createOverlayElement();
+        const title = document.getElementById('overlayTitle');
+        const grid = document.getElementById('overlayChannelGrid');
+        const breadcrumb = document.getElementById('overlayBreadcrumb');
+
+        // Breadcrumb
+        breadcrumb.innerHTML = `
+            <span style="color: #aaa;">📁 ${categoryName}</span>
+        `;
+
+        title.textContent = `📂 ${categoryName} - Selecione uma subcategoria`;
+        grid.innerHTML = '';
+        AppState.overlayChannels = [];
+        AppState.currentCategory = categoryName;
+        AppState.currentSubcategories = subcategories;
+
+        // Criar cards de subcategorias
+        subcategories.forEach((sub, index) => {
+            const card = this.createSubcategoryCard(sub, index);
+            grid.appendChild(card);
+            AppState.overlayChannels.push(card);
+        });
+
+        overlay.style.display = 'block';
+        AppState.currentView = 'overlay-subcategory';
+        this.setOverlayFocus(0);
+
+        this.showMessage(`📂 ${subcategories.length} subcategorias em "${categoryName}"`, 2000);
+    },
+
+    // ========================================
+    // 🎴 CRIAR CARD DE SUBCATEGORIA
+    // ========================================
+    createSubcategoryCard(subcategory, index) {
+        const div = document.createElement('div');
+        div.className = 'overlay-channel-item subcategory-card';
+        div.tabIndex = 0;
+        div.dataset.subIndex = index;
+
+        div.style.cssText = `
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+        `;
+
+        div.innerHTML = `
+            <div style="font-size: 2em; margin-bottom: 10px;">📂</div>
+            <div style="font-weight: bold; font-size: 1.1em; color: #6bff6b; text-align: center; margin-bottom: 8px;">
+                ${subcategory.name}
+            </div>
+            <div style="font-size: 0.9em; color: #aaa;">
+                ${subcategory.channels.length} ${subcategory.channels.length === 1 ? 'canal' : 'canais'}
+            </div>
+        `;
+
+        // Ao clicar, abre os CANAIS desta subcategoria
+        div.onclick = () => {
+            this.showChannelsOverlay(subcategory, index);
+        };
+
+        div.onkeydown = e => {
+            if (e.key === 'Enter') this.showChannelsOverlay(subcategory, index);
+        };
+
+        // Hover effects
+        div.onmouseenter = () => {
+            div.style.borderColor = '#6bff6b';
+            div.style.background = 'linear-gradient(135deg, #333 0%, #2a2a2a 100%)';
+            div.style.transform = 'scale(1.05)';
+        };
+
+        div.onmouseleave = () => {
+            if (!div.classList.contains('focused')) {
+                div.style.borderColor = '#444';
+                div.style.background = 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)';
+                div.style.transform = 'scale(1)';
+            }
+        };
+
+        return div;
+    },
+
+    // ========================================
+    // 📺 OVERLAY DE CANAIS (NÍVEL 3)
+    // ========================================
+    showChannelsOverlay(subcategory, subIndex) {
+        const grid = document.getElementById('overlayChannelGrid');
+        const title = document.getElementById('overlayTitle');
+        const breadcrumb = document.getElementById('overlayBreadcrumb');
+        const backBtn = document.getElementById('overlayBackBtn');
+
+        // Breadcrumb navegável
+        breadcrumb.innerHTML = `
+            <span style="color: #aaa; cursor: pointer;" id="breadcrumbCategory">
+                📁 ${AppState.currentCategory}
+            </span>
+            <span style="color: #666; margin: 0 8px;">›</span>
+            <span style="color: #6bff6b;">📂 ${subcategory.name}</span>
+        `;
+
+        // Voltar para subcategorias ao clicar na categoria do breadcrumb
+        document.getElementById('breadcrumbCategory').onclick = () => {
+            this.showSubcategoryOverlay(AppState.currentCategory, AppState.currentSubcategories);
+        };
+
+        // Mostrar botão voltar
+        backBtn.style.display = 'inline-block';
+        backBtn.onclick = () => {
+            this.showSubcategoryOverlay(AppState.currentCategory, AppState.currentSubcategories);
+        };
+
+        title.textContent = `📺 ${subcategory.name}`;
+        grid.innerHTML = '';
+        AppState.overlayChannels = [];
+        AppState.currentSubCategoryIndex = subIndex;
+
+        // Criar cards de canais
+        subcategory.channels.forEach((channel, chIndex) => {
+            const el = this.createChannelItem(channel, subIndex, chIndex);
+            grid.appendChild(el);
+            AppState.overlayChannels.push(el);
+        });
+
+        AppState.currentView = 'overlay-channels';
+        this.setOverlayFocus(0);
+
+        this.showMessage(`📺 ${subcategory.channels.length} canais em "${subcategory.name}"`, 2000);
+    },
+
+    // ========================================
+    // 🎬 ITEM DE CANAL
+    // ========================================
+    createChannelItem(channel, subIndex, chIndex) {
+        const div = document.createElement('div');
+        div.className = 'overlay-channel-item channel-card';
+        div.tabIndex = 0;
+
+        div.dataset.sub = subIndex;
+        div.dataset.pos = chIndex;
+        div.dataset.url = channel.url;
+
+        const isMP4 = channel.url && channel.url.toLowerCase().endsWith('.mp4');
+        const mp4Badge = isMP4 ? '<span style="background: #ffeb3b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;">MP4</span>' : '';
+
+        div.style.cssText = `
             background: #2a2a2a;
             border: 2px solid #444;
             border-radius: 8px;
@@ -266,62 +351,165 @@ const ChannelModule = {
             transition: all 0.3s ease;
             color: white;
         `;
-        
-        const isMP4 = channel.url && channel.url.toLowerCase().endsWith('.mp4');
-        const mp4Badge = isMP4 ? '<span style="font-size: 0.8em; color: yellow;">(MP4)</span>' : '';
-        
-        channelDiv.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 5px; color: #6bff6b;">
-                ${channel.name} ${mp4Badge}
+
+        div.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px; color: #6bff6b; display: flex; align-items: center;">
+                ▶️ ${channel.name} ${mp4Badge}
             </div>
             <div style="font-size: 0.8em; color: #aaa;">
-                Grupo: ${channel.group || 'Outros'}
+                ${channel.group || 'Sem categoria'}
             </div>
         `;
-        
-        // CORREÇÃO: Adicionar evento de clique
-        channelDiv.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🎬 Canal clicado:', channel.name);
-            this.openChannel(channel);
-        });
-        
-        // Suporte para tecla Enter/OK do controle remoto
-        channelDiv.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🎬 Canal ativado via Enter:', channel.name);
-                this.openChannel(channel);
+
+        div.onclick = () => this.openChannel(channel);
+        div.onkeydown = e => {
+            if (e.key === 'Enter') this.openChannel(channel);
+        };
+
+        // Hover effects
+        div.onmouseenter = () => {
+            div.style.borderColor = '#6bff6b';
+            div.style.background = '#333';
+        };
+
+        div.onmouseleave = () => {
+            if (!div.classList.contains('focused')) {
+                div.style.borderColor = '#444';
+                div.style.background = '#2a2a2a';
             }
-        });
-        
-        channelDiv.addEventListener('mouseenter', () => {
-            channelDiv.style.borderColor = '#6bff6b';
-            channelDiv.style.background = '#333';
-        });
-        
-        channelDiv.addEventListener('mouseleave', () => {
-            if (!channelDiv.classList.contains('focused')) {
-                channelDiv.style.borderColor = '#444';
-                channelDiv.style.background = '#2a2a2a';
-            }
-        });
-        
-        return channelDiv;
+        };
+
+        return div;
     },
-    
+
+    // ========================================
+    // ▶️ ABRIR CANAL NO PLAYER
+    // ========================================
+    openChannel(channel) {
+        const index = AppState.currentPlaylist.findIndex(c => c.url === channel.url);
+        AppState.setCurrentChannel(channel, index);
+
+        // 💾 SALVAR POSIÇÃO ATUAL DO OVERLAY ANTES DE ABRIR O PLAYER
+        AppState.lastOverlayFocusIndex = AppState.overlayFocusIndex;
+        console.log('💾 Salvando posição do overlay:', AppState.lastOverlayFocusIndex);
+
+        // ⭐ MOVER OVERLAY PARA TRÁS DO PLAYER
+        const overlay = document.getElementById('channelOverlay');
+        if (overlay) {
+            overlay.style.zIndex = '5000'; // Player fica em 10000
+        }
+
+        AppState.currentView = 'player';
+
+        if (typeof PlayerModule !== 'undefined') {
+            PlayerModule.open(channel.url, channel.name, index);
+        } else {
+            this.showMessage('❌ Erro: PlayerModule não disponível', 3000);
+        }
+    },
+
+    // ========================================
+    // 🔙 RESTAURAR OVERLAY APÓS FECHAR PLAYER
+    // ========================================
+    restoreOverlayAfterPlayer() {
+        console.log('🔙 restoreOverlayAfterPlayer chamado');
+        
+        const overlay = document.getElementById('channelOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+            console.log('✅ Overlay ainda está aberto, restaurando...');
+            
+            // Restaurar z-index do overlay
+            overlay.style.zIndex = '9999';
+            
+            // Restaurar view
+            AppState.currentView = 'overlay-channels';
+            
+            // 🎯 RESTAURAR FOCO NO CANAL QUE ESTAVA SELECIONADO
+            const focusIndex = AppState.lastOverlayFocusIndex >= 0 
+                ? AppState.lastOverlayFocusIndex 
+                : AppState.overlayFocusIndex;
+                
+            console.log('🎯 Restaurando foco no índice:', focusIndex);
+            
+            if (focusIndex >= 0 && AppState.overlayChannels.length > 0) {
+                // Usar setTimeout para garantir que o DOM está pronto
+                setTimeout(() => {
+                    this.setOverlayFocus(focusIndex);
+
+                    // 🔥 Garantir que o overlay reassuma o foco real
+                    const overlayEl = document.getElementById('channelOverlay');
+                    if (overlayEl && overlayEl.focus) {
+                        overlayEl.focus();
+                    }
+
+                    // 🔐 Reativar contexto de navegação
+                    AppState.currentView = 'overlay-channels';
+
+                    console.log('✅ Foco e navegação restaurados');
+                }, 100);
+            }
+        } else {
+            console.log('⚠️ Overlay não está visível, voltando para lista de categorias');
+            AppState.currentView = 'channels';
+        }
+    },
+
+    // ========================================
+    // 🎯 FOCO NO OVERLAY
+    // ========================================
+    setOverlayFocus(index) {
+        if (!AppState.overlayChannels.length) return;
+        
+        // Garantir que o índice está dentro dos limites
+        index = Math.max(0, Math.min(index, AppState.overlayChannels.length - 1));
+        
+        AppState.overlayChannels.forEach(el => {
+            el.classList.remove('focused');
+            el.style.borderColor = '#444';
+            
+            if (el.classList.contains('subcategory-card')) {
+                el.style.background = 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)';
+                el.style.transform = 'scale(1)';
+            } else {
+                el.style.background = '#2a2a2a';
+            }
+        });
+        
+        const el = AppState.overlayChannels[index];
+        el.classList.add('focused');
+        el.style.borderColor = '#6bff6b';
+        
+        if (el.classList.contains('subcategory-card')) {
+            el.style.background = 'linear-gradient(135deg, #333 0%, #2a2a2a 100%)';
+            el.style.transform = 'scale(1.05)';
+        } else {
+            el.style.background = '#333';
+        }
+        
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        AppState.overlayFocusIndex = index;
+    },
+
+    moveOverlayFocus(delta) {
+        const len = AppState.overlayChannels.length;
+        if (len === 0) return;
+        
+        const next = (AppState.overlayFocusIndex + delta + len) % len;
+        this.setOverlayFocus(next);
+    },
+
     // ========================================
     // 🖼️ CRIAR OVERLAY
     // ========================================
     createOverlayElement() {
-        let overlay = document.getElementById('channelOverlay');
-        if (overlay) return overlay;
-        
-        overlay = document.createElement('div');
-        overlay.id = 'channelOverlay';
-        overlay.style.cssText = `
+        let o = document.getElementById('channelOverlay');
+        if (o) return o;
+
+        o = document.createElement('div');
+        o.id = 'channelOverlay';
+        o.style.cssText = `
             display: none;
             position: fixed;
             top: 0;
@@ -329,84 +517,100 @@ const ChannelModule = {
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
-            z-index: 1000;
+            z-index: 9999;
             overflow-y: auto;
             padding: 20px;
             box-sizing: border-box;
         `;
-        
-        overlay.innerHTML = `
-            <div id="overlayContent" style="
+
+        o.innerHTML = `
+            <div style="
                 max-width: 1200px;
                 margin: 0 auto;
                 background: #1a1a1a;
-                border-radius: 10px;
-                padding: 20px;
+                border-radius: 12px;
+                padding: 25px;
                 border: 2px solid #333;
             ">
+                <!-- Breadcrumb -->
+                <div id="overlayBreadcrumb" style="
+                    font-size: 0.9em;
+                    margin-bottom: 15px;
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid #333;
+                "></div>
+
+                <!-- Header -->
                 <div style="
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                     margin-bottom: 20px;
-                    padding-bottom: 10px;
+                    padding-bottom: 15px;
                     border-bottom: 2px solid #333;
                 ">
-                    <h2 id="overlayTitle" style="color: #6bff6b; margin: 0; font-size: 1.5em;"></h2>
-                    <button id="overlayCloseBtn" tabindex="0" style="
-                        background: #ff4444;
-                        color: white;
-                        border: none;
-                        padding: 8px 16px;
-                        border-radius: 5px;
-                        cursor: pointer;
-                        font-size: 14px;
-                    ">✕ Fechar</button>
+                    <h2 id="overlayTitle" style="
+                        color: #6bff6b;
+                        margin: 0;
+                        font-size: 1.5em;
+                    "></h2>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="overlayBackBtn" style="
+                            background: #667eea;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            display: none;
+                        ">⬅️ Voltar</button>
+                        <button id="overlayCloseBtn" tabindex="0" style="
+                            background: #ff4444;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-size: 14px;
+                        ">✕ Fechar</button>
+                    </div>
                 </div>
+
+                <!-- Grid de conteúdo -->
                 <div id="overlayChannelGrid" style="
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 12px;
-                    max-height: 70vh;
+                    gap: 15px;
+                    max-height: 65vh;
                     overflow-y: auto;
+                    padding: 10px;
                 "></div>
             </div>
         `;
+
+        document.body.appendChild(o);
         
-        document.body.appendChild(overlay);
+        // Botão fechar
+        document.getElementById('overlayCloseBtn').onclick = () => this.hideOverlay();
         
-        // Botão fechar - usar addEventListener
-        const closeBtn = overlay.querySelector('#overlayCloseBtn');
-        closeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('❌ Fechando overlay');
-            this.hideOverlay();
-        });
-        
-        // Suporte para Enter no botão fechar
-        closeBtn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.hideOverlay();
-            }
-        });
-        
-        return overlay;
+        return o;
     },
-    
+
     // ========================================
-    // ❌ ESCONDER OVERLAY
+    // 🚪 FECHAR OVERLAY
     // ========================================
     hideOverlay() {
         const overlay = document.getElementById('channelOverlay');
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.style.zIndex = '9999'; // Resetar z-index
+        }
         
         AppState.currentView = 'channels';
         AppState.overlayChannels = [];
         AppState.overlayFocusIndex = 0;
-        AppState.currentCategory = null;
+        AppState.lastOverlayFocusIndex = -1;
         
         setTimeout(() => {
             const firstHeader = document.querySelector('.category-header');
@@ -415,203 +619,77 @@ const ChannelModule = {
             }
         }, 100);
     },
-    
+
     // ========================================
-    // 🎯 FOCO NO OVERLAY
+    // ⬅️ VOLTAR NO OVERLAY
     // ========================================
-    setOverlayFocus(index) {
-        if (!AppState.overlayChannels.length) return;
-        
-        AppState.overlayChannels.forEach(item => {
-            item.classList.remove('focused');
-            item.style.borderColor = '#444';
-            item.style.background = '#2a2a2a';
-        });
-        
-        const focusedItem = AppState.overlayChannels[index];
-        focusedItem.classList.add('focused');
-        focusedItem.style.borderColor = '#6bff6b';
-        focusedItem.style.background = '#333';
-        focusedItem.focus();
-        focusedItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-        AppState.overlayFocusIndex = index;
+    handleOverlayBack() {
+        if (AppState.currentView === 'overlay-channels') {
+            // Está nos canais, volta para subcategorias
+            this.showSubcategoryOverlay(AppState.currentCategory, AppState.currentSubcategories);
+        } else if (AppState.currentView === 'overlay-subcategory') {
+            // Está nas subcategorias, fecha o overlay
+            this.hideOverlay();
+        }
     },
-    
+
     // ========================================
-    // ⬅️➡️ MOVER FOCO NO OVERLAY
+    // 🔙 RETORNO DO PLAYER (ORQUESTRADOR)
     // ========================================
-    moveOverlayFocus(delta) {
-        if (!AppState.overlayChannels.length) return;
-        
-        const newIndex = (AppState.overlayFocusIndex + delta + AppState.overlayChannels.length) % AppState.overlayChannels.length;
-        this.setOverlayFocus(newIndex);
-    },
-    
-    // ========================================
-    // 🎬 ABRIR CANAL NO PLAYER
-    // ========================================
-    openChannel(channel) {
-        console.log('═══════════════════════════════════════');
-        console.log('🎬 ABRINDO CANAL');
-        console.log('   Nome:', channel.name);
-        console.log('   URL:', channel.url);
-        console.log('   Grupo:', channel.group);
-        console.log('   AppState.currentPlaylist:', AppState.currentPlaylist);
-        console.log('   É array?', Array.isArray(AppState.currentPlaylist));
-        console.log('   Length:', AppState.currentPlaylist?.length);
-        console.log('═══════════════════════════════════════');
-        
-        // Verificar se currentPlaylist é válido
-        if (!AppState.currentPlaylist) {
-            console.error('❌ AppState.currentPlaylist está vazio!');
-            this.showMessage('❌ Erro: Playlist não carregada', 'error');
+    handleReturnFromPlayer() {
+        console.log('🔙 handleReturnFromPlayer');
+
+        const overlay = document.getElementById('channelOverlay');
+
+        // Overlay tem prioridade absoluta
+        if (
+            overlay &&
+            overlay.style.display !== 'none' &&
+            AppState.lastOverlayFocusIndex >= 0
+        ) {
+            AppState.currentView = 'overlay-channels';
+            this.restoreOverlayAfterPlayer();
             return;
         }
-        
-        // Se for objeto indexado, converter para array primeiro
-        let playlistArray = AppState.currentPlaylist;
-        if (AppState.currentPlaylist.isIndexed) {
-            console.log('🔄 Playlist indexada detectada, usando fallback');
-            // Fallback: criar array temporário apenas com este canal
-            playlistArray = [channel];
-        }
-        
-        const channelIndex = playlistArray.findIndex(ch => ch.url === channel.url);
-        console.log('📍 Índice do canal na playlist:', channelIndex);
-        
-        // Se não encontrou, usar índice 0
-        const finalIndex = channelIndex >= 0 ? channelIndex : 0;
-        
-        // Salvar no AppState ANTES de abrir o player
-        AppState.setCurrentChannel(channel, finalIndex);
-        
-        if (typeof PlayerModule !== 'undefined') {
-            console.log('✅ PlayerModule encontrado, abrindo player...');
-            PlayerModule.open(channel.url, channel.name, finalIndex);
-        } else {
-            console.error('❌ PlayerModule não carregado!');
-            console.error('   Verifique se player.js foi incluído no HTML');
-            this.showMessage('❌ Erro: PlayerModule não disponível', 'error');
-        }
+
+        // Fallback seguro
+        this.updateChannelList();
     },
-    
-    // ========================================
-    // 🎯 FOCAR NO CANAL (restauração)
-    // ========================================
-    focusChannel(index) {
-        console.log('╔═══════════════════════════════════════╗');
-        console.log('🎯 ChannelModule.focusChannel()');
-        console.log('   Índice:', index);
-        console.log('╚═══════════════════════════════════════╝');
-        
-        if (index < 0 || index >= AppState.currentPlaylist.length) {
-            console.warn('⚠️ Índice inválido:', index);
-            return false;
-        }
-        
-        const channel = AppState.currentPlaylist[index];
-        if (!channel) {
-            console.error('❌ Canal não encontrado');
-            return false;
-        }
-        
-        const categoryName = channel.group || 'Outros';
-        console.log('📂 Categoria do canal:', categoryName);
-        console.log('📺 Canal:', channel.name);
-        
-        // Agrupar canais por categoria
-        const grouped = this.groupByCategory(AppState.currentPlaylist);
-        const channelsInCategory = grouped[categoryName] || [];
-        
-        // Abrir overlay da categoria
-        this.showCategoryOverlay(categoryName, channelsInCategory);
-        
-        // Aguardar renderização e focar no canal
-        setTimeout(() => {
-            // Encontrar o canal no overlay pelo índice original
-            const targetChannelDiv = AppState.overlayChannels.find(div => {
-                return parseInt(div.dataset.index) === index;
-            });
-            
-            if (targetChannelDiv) {
-                const targetIndex = AppState.overlayChannels.indexOf(targetChannelDiv);
-                console.log('✅ Canal encontrado no overlay, índice:', targetIndex);
-                
-                // Focar com destaque
-                this.setOverlayFocus(targetIndex);
-                
-                // Destaque visual temporário
-                targetChannelDiv.style.boxShadow = '0 0 20px #0f0';
-                targetChannelDiv.style.transform = 'scale(1.05)';
-                
-                setTimeout(() => {
-                    targetChannelDiv.style.boxShadow = '';
-                    targetChannelDiv.style.transform = '';
-                }, 2000);
-                
-                console.log('✅ Foco restaurado no canal:', channel.name);
-                return true;
-            } else {
-                console.warn('⚠️ Canal não encontrado no overlay');
-                return false;
-            }
-        }, 300);
-        
-        return true;
-    },
-    
-    // ========================================
-    // 🔍 FOCAR ÚLTIMO CANAL (compatibilidade)
-    // ========================================
-    focusLastChannel() {
-        const index = AppState.currentChannelIndex;
-        console.log('🔍 focusLastChannel() - Índice:', index);
-        
-        if (index >= 0) {
-            return this.focusChannel(index);
-        }
-        
-        return false;
-    },
-    
-    // ========================================
-    // 🔄 RESET DA BUSCA
-    // ========================================
-    resetSearch() {
-        if (typeof SearchModule !== 'undefined') {
-            SearchModule.hide();
-            console.log('🔄 Busca resetada');
-        }
-    },
-    
-    // ========================================
-    // 💬 MENSAGENS
-    // ========================================
-    showMessage(text, type = 'info') {
-        if (!this.messageArea) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type === 'error' ? 'error-message' : 
-                                type === 'loading' ? 'loading' : 'success-message'}`;
-        messageDiv.textContent = text;
-        
-        this.messageArea.innerHTML = '';
-        this.messageArea.appendChild(messageDiv);
-        
-        if (type !== 'loading') {
-            setTimeout(() => {
-                if (this.messageArea.contains(messageDiv)) {
-                    this.messageArea.removeChild(messageDiv);
-                }
-            }, 5000);
-        }
-    }
+
 };
 
-// Export
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ChannelModule;
-}
+// ========================================
+// 🎮 NAVEGAÇÃO POR TECLADO
+// ========================================
+document.addEventListener('keydown', e => {
+    if (!AppState.currentView || !AppState.currentView.startsWith('overlay')) return;
 
-console.log('✅ ChannelModule carregado (v3.2 - CORRIGIDO - Cliques funcionando)');
+    switch (e.key) {
+        case 'ArrowUp':
+            e.preventDefault();
+            ChannelModule.moveOverlayFocus(-3);
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            ChannelModule.moveOverlayFocus(-1);
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            ChannelModule.moveOverlayFocus(3);
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            ChannelModule.moveOverlayFocus(1);
+            break;
+        case 'Backspace':
+        case 'Escape':
+            e.preventDefault();
+            ChannelModule.handleOverlayBack();
+            break;
+        case 'Enter':
+            // já tratado pelo elemento focado
+            break;
+    }
+});
+
+console.log('✅ ChannelModule v5.2 carregado - Foco correto ao voltar do player');
