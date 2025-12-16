@@ -541,3 +541,67 @@ const PlayerModule = {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlayerModule;
 }
+
+
+
+// === FULLSCREEN BUTTON PATCH ===
+(function(){
+    if (typeof PlayerModule === 'undefined') return;
+
+    // add fullscreen methods only if not present
+    if (!PlayerModule.toggleFullscreen) {
+        PlayerModule.toggleFullscreen = function () {
+            try {
+                const doc = document;
+                const el = PlayerModule.overlay || document.documentElement;
+
+                if (
+                    doc.fullscreenElement ||
+                    doc.webkitFullscreenElement ||
+                    doc.mozFullScreenElement ||
+                    doc.msFullscreenElement
+                ) {
+                    if (doc.exitFullscreen) doc.exitFullscreen();
+                    else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+                    else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+                    else if (doc.msExitFullscreen) doc.msExitFullscreen();
+                } else {
+                    if (el.requestFullscreen) el.requestFullscreen();
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                }
+            } catch (e) {
+                console.warn('Fullscreen error:', e);
+            }
+        };
+    }
+
+    // inject button after overlay creation
+    const _origCreateOverlay = PlayerModule.createOverlay;
+    if (_origCreateOverlay && !_origCreateOverlay.__fullscreenPatched) {
+        PlayerModule.createOverlay = function () {
+            _origCreateOverlay.apply(this, arguments);
+
+            try {
+                const controls = this.overlay && this.overlay.querySelector('#controls');
+                if (!controls) return;
+
+                if (!controls.querySelector('#fullscreenBtn')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'fullscreenBtn';
+                    btn.className = 'player-control';
+                    btn.textContent = '⛶ Tela cheia';
+                    btn.onclick = () => PlayerModule.toggleFullscreen();
+                    controls.insertBefore(btn, controls.lastElementChild);
+                }
+            } catch (e) {
+                console.warn('Fullscreen button inject failed:', e);
+            }
+        };
+        PlayerModule.createOverlay.__fullscreenPatched = true;
+    }
+
+    // ensure global exposure
+    window.PlayerModule = PlayerModule;
+})();
