@@ -1,367 +1,216 @@
-// playlists-core.js - OTIMIZADO PARA SMART TV
-// Versão 3.1 - CORRIGIDO COM TODAS AS FUNÇÕES
+// playlists.js - Gerenciamento de playlists locais, remotas e uploads
+// OTIMIZADO PARA SMART TV - SEM LIMITES DE TIMEOUT
+// COM TRATAMENTO DE CORS
 
 const PlaylistModule = {
     playlistSelector: null,
     playlistList: null,
     remotePlaylistSelector: null,
     remotePlaylistList: null,
+    
+    // Lista de proxies CORS públicos (fallback automático)
+    corsProxies: [
+        'https://corsproxy.io/?',
+        'https://api.allorigins.win/raw?url=',
+        'https://api.codetabs.com/v1/proxy?quest='
+    ],
     currentProxyIndex: 0,
     
-    // Configurações de processamento ULTRA-OTIMIZADAS
-    CHUNK_SIZE: 50000, // Processar 50.000 canais por vez
-    CHUNK_DELAY: 1, // 1ms entre chunks (mínimo possível)
+    // Configurações de playlists remotas
+    remotePlaylistsConfig: [
+        {
+        name: "🎬 Canais",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais24h.m3u8",
+        category: "Filmes"
+      },
+	  
+	  {
+        name: "🎬 Filmes1 ",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
+        category: "Mp4"
+      },
+      {
+        name: "🎬 Series1 ",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/seriesmp4.m3u8",
+        category: "Mp4"
+      },
+      {
+        name: "🎬 Filmes e Series",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/filmes-series.m3u8",
+        category: "Mp4"
+      },{
+        name: "🎬 Filmes e Series2",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_filmes_series.m3u",
+        category: "Filmes e Series"
+      },
+      {
+        name: "🎬 Series2 mp4",
+        description: "Big sequencia, series boas.",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series2-mp4.m3u8",
+        category: "Mp4"
+      },{
+        name: "🎬 Series3 mp4",
+        description: "Rancho, Dexter, Suits, Justfield",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/series3-mp4.m3u8",
+        category: "Mp4"
+      },{
+        name: "🎬 Filmes2 mp4",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists2/filmes2-mp4.m3u8",
+        category: "Mp4"
+      },{
+        name: "🎬 Canais2 mp4",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/canais2.m3u8",
+        category: "Mp4"
+      },
+	  {
+        name: "🎬 Mp4 1",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part1.m3u",
+        category: "Mp4"
+      },{
+        name: "🎬 Mp4 2",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part2.m3u",
+        category: "Mp4"
+      },
+	  /* Atualizar essas playlists*/
+	  {
+        name: "🎬 Mp4 3",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part3.m3u",
+        category: "Filmes"
+      },
+	  {
+        name: "🎬 Mp4 4",
+        description: "Canais variados de alta qualidade",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_mp4_part4.m3u",
+        category: "Filmes"
+      },
+	  
+      
+
+	  {
+        name: "👶 Desenhos",
+        description: "Conteúdo seguro para crianças",
+        url: "https://raw.githubusercontent.com/victorozzyy/m3uplayer-web/refs/heads/main/playlists/playlist_desenhos.m3u",
+        category: "Infantil"
+      }
+    ],
+    
+     // Playlists locais
+    availablePlaylists: [
+        { name: "Lista 01", filename: "lista01.m3u8" },
+       
+        { name: "Lista 02", filename: "lista02.m3u" }
+    ],
+    
+    // Minhas Listas (personalizadas) - COM MARCAÇÃO CORS
+    minhasListasConfig: [
+       {
+            name: "🔥 Lista 01",
+            description: "Lista 04",
+            url: "https://felas87dz.icu/get.php?username=854191413&password=383942274&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 02",
+            description: "Lista 01",
+            url: "https://kinder5.live/get.php?username=164485614&password=530298439&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 03",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=707434249&password=697551514&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Lista 04",
+            description: "Lista 04",
+            url: "http://kinder5.live:80/get.php?username=688306193&password=033189514&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 05",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=460757764&password=835992209&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 06",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=34211473179&password=88284437124&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 07",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=534910100&password=232065201&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Lista 08",
+            description: "Lista 04",
+            url: "http://kinder5.live:80/get.php?username=82647069012&password=34033899350&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 09",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=661282206&password=318344838&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 10",
+            description: "Lista 01",
+            url: "http://kinder5.live:80/get.php?username=094279188&password=062038990&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Minha 11",
+            description: "Lista 02",
+            url: "http://kinder5.live:80/get.php?username=23156616732&password=42382360350&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 Anon",
+            description: "Lista 01",
+            url: "http://felas87dz.icu:80/get.php?username=Anonymous100&password=Hacker100&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 PoAtt",
+            description: "Lista 02",
+            url: "http://xocu.in/get.php?username=427895596&password=B312H8244k&type=m3u_plus",
+            needsCors: true
+        },
+        {
+            name: "🔥 PoAtt2",
+            description: "Lista 02",
+            url: "http://xocu.in/get.php?username=994995942&password=y751261z&type=m3u_plus",
+            needsCors: true
+        }
+    ],
     
     init() {
-        console.log('🔧 PlaylistModule.init()');
         this.playlistSelector = document.getElementById('playlistSelector');
         this.playlistList = document.getElementById('playlistList');
         this.remotePlaylistSelector = document.getElementById('remotePlaylistSelector');
         this.remotePlaylistList = document.getElementById('remotePlaylistList');
-        
-        // Inicializar DocumentsManager
-        if (typeof DocumentsManager !== 'undefined') {
-            DocumentsManager.init();
-        }
-        
-        console.log('✅ PlaylistModule inicializado');
     },
     
-    // ========================================
-    // ⚡ PARSER ULTRA-RÁPIDO - PROCESSAMENTO EM BATCH
-    // ========================================
-    async parsePlaylistAsync(content, onProgress = null) {
-        try {
-            console.log('⚡ PARSER ULTRA-RÁPIDO INICIADO...');
-            const startTime = performance.now();
-            
-            if (!content || typeof content !== 'string') {
-                throw new Error('Conteúdo da playlist inválido');
-            }
-            
-            // Split otimizado - mais rápido que regex
-            const lines = content.split('\n');
-            const totalLines = lines.length;
-            
-            console.log(`📊 Total de linhas: ${totalLines.toLocaleString()}`);
-            
-            if (onProgress) onProgress(5, 'Preparando processamento...');
-            
-            const parsed = [];
-            let chunkCount = 0;
-            
-            // Processar TUDO em chunks maiores
-            for (let i = 0; i < lines.length; i += this.CHUNK_SIZE) {
-                const chunk = lines.slice(i, i + this.CHUNK_SIZE);
-                const chunkResults = this.processChunkSync(chunk);
-                
-                parsed.push(...chunkResults);
-                chunkCount++;
-                
-                const progress = Math.floor((i / totalLines) * 90) + 5;
-                const channelsFound = parsed.length;
-                
-                if (onProgress) {
-                    onProgress(progress, `⚡ ${channelsFound.toLocaleString()} canais processados`);
-                }
-                
-                // Micro-pausa para UI respirar (apenas 1ms)
-                if (chunkCount % 5 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, this.CHUNK_DELAY));
-                }
-            }
-            
-            const endTime = performance.now();
-            const duration = ((endTime - startTime) / 1000).toFixed(2);
-            
-            console.log(`✅ PARSER CONCLUÍDO em ${duration}s`);
-            console.log(`📺 ${parsed.length.toLocaleString()} canais encontrados`);
-            console.log(`⚡ Velocidade: ${Math.floor(parsed.length / duration).toLocaleString()} canais/segundo`);
-            
-            if (onProgress) onProgress(100, `✅ ${parsed.length.toLocaleString()} canais prontos!`);
-            
-            return parsed;
-            
-        } catch (error) {
-            console.error('❌ Erro ao parsear playlist:', error);
-            return [];
-        }
-    },
-    
-    // ========================================
-    // ⚡ PROCESSAR CHUNK SINCRONAMENTE (SEM AWAIT)
-    // ========================================
-    processChunkSync(lines) {
-        const results = [];
-        let currentName = '';
-        let currentGroup = 'Outros';
-        
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            
-            if (!line) continue;
-            
-            // Detecção ultra-rápida
-            if (line[0] === '#' && line[1] === 'E') { // #EXTINF
-                // Extrair group-title
-                const groupIdx = line.indexOf('group-title="');
-                if (groupIdx !== -1) {
-                    const start = groupIdx + 13;
-                    const end = line.indexOf('"', start);
-                    if (end !== -1) {
-                        currentGroup = line.substring(start, end) || 'Outros';
-                    }
-                }
-                
-                // Extrair nome (depois da última vírgula)
-                const commaIdx = line.lastIndexOf(',');
-                if (commaIdx !== -1) {
-                    currentName = line.substring(commaIdx + 1).trim();
-                }
-                
-                // Se não tem nome, tentar próxima linha
-                if (!currentName && i + 1 < lines.length) {
-                    const nextLine = lines[i + 1].trim();
-                    if (nextLine && !nextLine.startsWith('http')) {
-                        currentName = nextLine;
-                        i++;
-                    }
-                }
-                
-                if (!currentName) {
-                    currentName = 'Canal Desconhecido';
-                }
-                
-            } else if (line.startsWith('http')) {
-                // Validação rápida de URL
-                if (line.includes('://')) {
-                    results.push({
-                        url: line,
-                        name: currentName || 'Canal Desconhecido',
-                        group: currentGroup || 'Outros'
-                    });
-                }
-                
-                // Reset para próximo canal
-                currentName = '';
-                currentGroup = 'Outros';
-            }
-        }
-        
-        return results;
-    },
-    
-    
-    
-    // ========================================
-    // 🔁 RESOLVER PLAYLIST ENCADEADA (RAW → RAW → M3U)
-    // ========================================
-    async resolveFinalPlaylistUrl(url, maxDepth = 5) {
-        console.log('🔁 Resolvendo URL:', url);
-
-        let currentUrl = url;
-
-        for (let depth = 0; depth < maxDepth; depth++) {
-            console.log(`🔎 Nível ${depth + 1}:`, currentUrl);
-
-            const response = await fetch(currentUrl, {
-                cache: 'no-cache',
-                headers: {
-                    'Accept': 'text/plain, */*'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Falha ao acessar: ${currentUrl} (${response.status})`);
-            }
-
-            const text = await response.text();
-
-            const upper = text.toUpperCase();
-
-            // 🛑 Se já é uma playlist M3U válida, parar aqui
-            if (upper.includes('#EXTM3U') || upper.includes('#EXTINF')) {
-                console.log('✅ Conteúdo já é uma playlist válida, usando esta URL:', currentUrl);
-                return {
-                    finalUrl: currentUrl,
-                    content: text
-                };
-            }
-
-            // Procurar se dentro existe outro link
-            const innerUrl = extractFirstPlaylistUrl(text);
-
-            // Se não encontrou outro link, assumir que isto é a playlist final
-            if (!innerUrl || !this.isValidUrl(innerUrl)) {
-                console.log('ℹ️ Nenhum redirecionamento encontrado, usando conteúdo atual');
-                return {
-                    finalUrl: currentUrl,
-                    content: text
-                };
-            }
-
-            // 🛑 Não seguir links que parecem ser mídia direta (.ts, .mp4, etc)
-            const lower = innerUrl.toLowerCase();
-            if (
-                lower.endsWith('.ts') ||
-                lower.endsWith('.mp4') ||
-                lower.endsWith('.mkv') ||
-                lower.endsWith('.avi') ||
-                lower.endsWith('.mov')
-            ) {
-                console.warn('⚠️ Redirecionamento aponta para mídia, ignorando e tratando como playlist final:', innerUrl);
-                return {
-                    finalUrl: currentUrl,
-                    content: text
-                };
-            }
-
-            console.log('➡️ Encontrado redirecionamento para:', innerUrl);
-            currentUrl = innerUrl;
-            continue;
-        }
-
-        throw new Error('❌ Muitos redirecionamentos encadeados (possível loop infinito)');
-    },
-
-
-
-// ========================================
-    // 📡 CARREGAR PLAYLIST REMOTA (OTIMIZADO)
-    // ========================================
-    loadRemotePlaylist: async function (url, name, needsCors = false) {
-        try {
-            if (!this.isValidUrl(url)) {
-                throw new Error('URL da playlist inválida');
-            }
-            
-            // Verificar cache primeiro
-            const cached = AppState.getCachedPlaylist(url);
-            if (cached) {
-                console.log('📦 Usando playlist em cache:', name);
-                this.setPlaylist(cached, name, 'remote');
-                return;
-            }
-            
-            // Mostrar progresso inicial
-            this.showProgressMessage(name, 0, 'Conectando...');
-            
-            let response;
-            
-            // Se precisa de CORS, usar proxy
-            if (needsCors) {
-                console.log('🔧 Usando proxy CORS para:', url);
-                response = await this.fetchWithCorsProxy(url, { 
-                    cache: 'no-cache',
-                    headers: {
-                        'Accept': 'application/x-mpegURL, text/plain, */*'
-                    }
-                });
-            } else {
-                // Fetch normal com timeout de 30s
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
-                
-                try {
-                    response = await fetch(url, { 
-                        cache: 'no-cache',
-                        signal: controller.signal,
-                        headers: {
-                            'Accept': 'application/x-mpegURL, text/plain, */*'
-                        }
-                    });
-                    clearTimeout(timeoutId);
-                } catch (fetchError) {
-                    clearTimeout(timeoutId);
-                    if (fetchError.name === 'AbortError') {
-                        throw new Error('Timeout: requisição levou mais de 30 segundos');
-                    }
-                    throw fetchError;
-                }
-            }
-            
-            if (!response.ok) {
-                throw new Error(`Falha ao carregar ${name} (${response.status})`);
-            }
-            
-            this.showProgressMessage(name, 30, 'Baixando dados...');
-            
-            
-            // 🔁 Resolver possível playlist encadeada (RAW que aponta para outra RAW ou M3U)
-            this.showProgressMessage(name, 20, 'Resolvendo redirecionamentos...');
-
-            const resolved = await this.resolveFinalPlaylistUrl(url);
-
-            const finalUrl = resolved.finalUrl;
-            const data = resolved.content;
-
-            console.log('🎯 URL FINAL USADA:', finalUrl);
-
-            
-            this.showProgressMessage(name, 50, 'Processando canais...');
-            
-            // Parser assíncrono com progresso
-            const parsedPlaylist = await this.parsePlaylistAsync(data, (progress, message) => {
-                const adjustedProgress = 50 + (progress / 2); // 50-100%
-                this.showProgressMessage(name, adjustedProgress, message);
-            });
-            
-            if (parsedPlaylist.length === 0) {
-                throw new Error('Playlist vazia ou formato inválido');
-            }
-            
-            // Salvar no cache
-            AppState.cachePlaylist(finalUrl, parsedPlaylist);
-            
-            // Salvar no filesystem de forma assíncrona (não bloquear)
-            if (typeof DocumentsManager !== 'undefined') {
-                console.log('💾 Salvando playlist no filesystem (em background)...');
-                DocumentsManager.savePlaylist(name, parsedPlaylist).then(result => {
-                    if (result.success) {
-                        console.log('✅ Playlist salva no filesystem:', result.location);
-                    }
-                }).catch(err => {
-                    console.warn('⚠️ Erro ao salvar no filesystem:', err);
-                });
-            }
-            
-            this.setPlaylist(parsedPlaylist, name, 'remote');
-            
-        } catch (error) {
-            console.error('❌ Erro ao carregar playlist remota:', error);
-            
-            let errorMsg = `❌ Erro: ${error.message}`;
-            
-            if (error.message.includes('CORS') || error.message.includes('proxy')) {
-                errorMsg += '\n💡 Tente usar proxy CORS ou hospede em servidor com CORS';
-            } else if (error.message.includes('Timeout')) {
-                errorMsg += '\n💡 Servidor muito lento. Tente novamente.';
-            }
-            
-            ChannelModule.showMessage(errorMsg, 'error');
-        }
-    },
-    
-    // ========================================
-    // 📊 MOSTRAR PROGRESSO VISUAL
-    // ========================================
-    showProgressMessage(playlistName, percent, message) {
-        const fullMessage = `📄 ${playlistName}: ${Math.floor(percent)}% - ${message}`;
-        
-        if (typeof ChannelModule !== 'undefined' && ChannelModule.showMessage) {
-            ChannelModule.showMessage(fullMessage, 'loading');
-        }
-        
-        console.log(fullMessage);
-    },
-    
-    // ========================================
-    // 🔧 CORS PROXY HANDLER
-    // ========================================
+    // 🔧 FUNÇÃO PARA TENTAR FETCH COM PROXY CORS
     async fetchWithCorsProxy(url, options = {}) {
-        // Tentar fetch direto primeiro
+        // Primeiro, tentar sem proxy (pode funcionar em alguns casos)
         try {
-            console.log('📄 Tentando fetch direto:', url);
+            console.log('🔄 Tentando fetch direto:', url);
             const response = await fetch(url, options);
             if (response.ok) {
                 console.log('✅ Fetch direto bem-sucedido');
@@ -371,21 +220,20 @@ const PlaylistModule = {
             console.log('⚠️ Fetch direto falhou, tentando com proxy...');
         }
         
-        // Tentar com cada proxy
-        const proxies = PlaylistConfig.corsProxies;
-        for (let i = 0; i < proxies.length; i++) {
-            const proxy = proxies[i];
+        // Tentar com cada proxy na lista
+        for (let i = 0; i < this.corsProxies.length; i++) {
+            const proxy = this.corsProxies[i];
             const proxiedUrl = proxy + encodeURIComponent(url);
             
             try {
-                console.log(`📄 Tentando proxy ${i + 1}/${proxies.length}:`, proxy);
-                ChannelModule.showMessage(`📄 Tentando via proxy ${i + 1}...`, 'loading');
+                console.log(`🔄 Tentando proxy ${i + 1}/${this.corsProxies.length}:`, proxy);
+                ChannelModule.showMessage(`🔄 Tentando via proxy ${i + 1}...`, 'loading');
                 
                 const response = await fetch(proxiedUrl, options);
                 
                 if (response.ok) {
                     console.log(`✅ Sucesso com proxy ${i + 1}`);
-                    this.currentProxyIndex = i;
+                    this.currentProxyIndex = i; // Guardar proxy que funcionou
                     return response;
                 }
                 
@@ -394,14 +242,12 @@ const PlaylistModule = {
             }
         }
         
-        throw new Error('Todos os proxies CORS falharam. URL pode estar bloqueada.');
+        // Se todos os proxies falharem, lançar erro
+        throw new Error('Todos os proxies CORS falharam. URL pode estar bloqueada ou indisponível.');
     },
     
-    // ========================================
-    // 📥 MINHAS LISTAS
-    // ========================================
+    // Mostra seletor de Minhas Listas
     showMinhasListasSelector() {
-        console.log('📥 showMinhasListasSelector()');
         this.hideAllSelectors();
         this.remotePlaylistSelector.style.display = 'block';
         this.updateMinhasListasList();
@@ -412,38 +258,30 @@ const PlaylistModule = {
             if (AppState.remotePlaylistItems.length > 0) {
                 AppState.remoteFocusIndex = 0;
                 const firstItem = AppState.remotePlaylistItems[0];
-                if (firstItem) {
-                    firstItem.focus();
-                    firstItem.classList.add('focused');
-                }
+                firstItem.focus();
+                firstItem.classList.add('focused');
             }
-        }, 200);
+        }, 100);
     },
     
+    // Atualiza lista de Minhas Listas
     updateMinhasListasList() {
         try {
-            if (!this.remotePlaylistList) {
-                console.error('❌ remotePlaylistList não encontrado');
-                return;
-            }
-
             const fragment = document.createDocumentFragment();
-            const config = PlaylistConfig.minhasListasConfig;
             
             const header = document.createElement('li');
-            header.innerHTML = '<strong>📥 Suas Listas Fixas:</strong>';
+            header.innerHTML = '<strong>🔥 Suas Listas Fixas:</strong>';
             header.className = 'section-header';
-            header.style.cssText = 'color: #6bff6b; padding: 10px 0; list-style: none;';
+            header.style.cssText = 'color: #6bff6b; padding: 10px 0;';
             fragment.appendChild(header);
             
-            config.forEach((playlist, index) => {
+            this.minhasListasConfig.forEach(playlist => {
                 const li = document.createElement('li');
                 li.className = 'remote-playlist-item';
                 li.setAttribute('tabindex', '0');
                 li.dataset.url = playlist.url;
                 li.dataset.name = playlist.name;
-                li.dataset.needsCors = playlist.needsCors || 'false';
-                li.dataset.index = index;
+                li.dataset.needsCors = playlist.needsCors || false;
                 
                 li.innerHTML = `
                     <div style="margin-bottom: 5px;">
@@ -454,11 +292,7 @@ const PlaylistModule = {
                     </div>
                 `;
                 
-                li.addEventListener('click', () => {
-                    console.log('📥 Carregando:', playlist.name);
-                    this.loadRemotePlaylist(playlist.url, playlist.name, playlist.needsCors);
-                });
-                
+                li.onclick = () => this.loadRemotePlaylist(playlist.url, playlist.name, playlist.needsCors);
                 fragment.appendChild(li);
             });
             
@@ -466,21 +300,16 @@ const PlaylistModule = {
             this.remotePlaylistList.appendChild(fragment);
             
             AppState.remotePlaylistItems = Array.from(document.querySelectorAll('.remote-playlist-item'));
-            
-            console.log(`✅ ${config.length} listas carregadas`);
-            ChannelModule.showMessage(`📥 ${config.length} listas fixas disponíveis`, 'success');
+            ChannelModule.showMessage(`🔥 ${this.minhasListasConfig.length} listas fixas disponíveis`, 'success');
             
         } catch (error) {
-            console.error('❌ Erro ao atualizar Minhas Listas:', error);
+            console.error('Erro ao atualizar Minhas Listas:', error);
             ChannelModule.showMessage('❌ Erro ao carregar Minhas Listas', 'error');
         }
     },
     
-    // ========================================
-    // 📡 PLAYLISTS REMOTAS
-    // ========================================
+    // Mostra seletor de playlists remotas
     showRemotePlaylistSelector() {
-        console.log('📡 showRemotePlaylistSelector()');
         this.hideAllSelectors();
         this.remotePlaylistSelector.style.display = 'block';
         this.updateRemotePlaylistList();
@@ -489,21 +318,24 @@ const PlaylistModule = {
         setTimeout(() => this.focusFirstRemotePlaylist(), 100);
     },
     
+    // Atualiza lista de playlists remotas
     updateRemotePlaylistList() {
         try {
             const fragment = document.createDocumentFragment();
-            const config = PlaylistConfig.remotePlaylistsConfig;
             
-            const categories = [...new Set(config.map(p => p.category))];
+            // Agrupar por categoria
+            const categories = [...new Set(this.remotePlaylistsConfig.map(p => p.category))];
             
             categories.forEach(category => {
+                // Header da categoria
                 const categoryHeader = document.createElement('li');
                 categoryHeader.innerHTML = `<strong>📂 ${category}</strong>`;
                 categoryHeader.className = 'category-header-remote';
                 categoryHeader.style.cssText = 'color: #6bff6b; padding: 10px 0 5px 0; border-bottom: 1px solid #333;';
                 fragment.appendChild(categoryHeader);
                 
-                const categoryPlaylists = config.filter(p => p.category === category);
+                // Playlists da categoria
+                const categoryPlaylists = this.remotePlaylistsConfig.filter(p => p.category === category);
                 categoryPlaylists.forEach(playlist => {
                     const li = document.createElement('li');
                     li.className = 'remote-playlist-item';
@@ -520,11 +352,7 @@ const PlaylistModule = {
                         </div>
                     `;
                     
-                    li.addEventListener('click', () => {
-                        console.log('📡 Carregando:', playlist.name);
-                        this.loadRemotePlaylist(playlist.url, playlist.name, false);
-                    });
-                    
+                    li.onclick = () => this.loadRemotePlaylist(playlist.url, playlist.name, false);
                     fragment.appendChild(li);
                 });
             });
@@ -533,7 +361,7 @@ const PlaylistModule = {
             this.remotePlaylistList.appendChild(fragment);
             
             AppState.remotePlaylistItems = Array.from(document.querySelectorAll('.remote-playlist-item'));
-            ChannelModule.showMessage(`📡 ${config.length} playlists remotas disponíveis`, 'success');
+            ChannelModule.showMessage(`📡 ${this.remotePlaylistsConfig.length} playlists remotas disponíveis`, 'success');
             
         } catch (error) {
             console.error('Erro ao atualizar playlists remotas:', error);
@@ -541,200 +369,368 @@ const PlaylistModule = {
         }
     },
     
-    // ========================================
-    // 📁 PLAYLISTS LOCAIS
-    // ========================================
-    showPlaylistSelector() {
-        console.log('📁 showPlaylistSelector()');
+    // Carrega playlist remota - COM SUPORTE CORS
+    async loadRemotePlaylist(url, name, needsCors = false) {
+        try {
+            if (!this.isValidUrl(url)) {
+                throw new Error('URL da playlist inválida');
+            }
+            
+            // Verificar cache
+            const cached = AppState.getCachedPlaylist(url);
+            if (cached) {
+                console.log('📦 Usando playlist em cache:', name);
+                this.setPlaylist(cached, name, 'remote');
+                return;
+            }
+            
+            ChannelModule.showMessage(`📄 Carregando ${name}... Aguarde...`, 'loading');
+            
+            let response;
+            
+            // Se precisa de CORS, usar proxy
+            if (needsCors) {
+                response = await this.fetchWithCorsProxy(url, { cache: 'no-cache' });
+            } else {
+                // Fetch normal
+                response = await fetch(url, { cache: 'no-cache' });
+            }
+            
+            if (!response.ok) {
+                throw new Error(`Falha ao carregar ${name} (${response.status})`);
+            }
+            
+            ChannelModule.showMessage(`⏳ Processando dados de ${name}...`, 'loading');
+            
+            const data = await response.text();
+            const parsedPlaylist = this.parsePlaylist(data);
+            
+            if (parsedPlaylist.length === 0) {
+                throw new Error('Playlist vazia ou formato inválido');
+            }
+            
+            AppState.cachePlaylist(url, parsedPlaylist);
+            this.setPlaylist(parsedPlaylist, name, 'remote');
+            
+        } catch (error) {
+            console.error('Erro ao carregar playlist remota:', error);
+            
+            // Mensagem de erro mais detalhada
+            let errorMsg = `❌ Erro: ${error.message}`;
+            
+            if (error.message.includes('CORS') || error.message.includes('proxy')) {
+                errorMsg += '\n💡 Dica: Tente hospedar a playlist no GitHub ou usar servidor com CORS habilitado';
+            }
+            
+            ChannelModule.showMessage(errorMsg, 'error');
+        }
+    },
+    
+    // Mostra seletor de playlists locais
+    async showPlaylistSelector() {
         this.hideAllSelectors();
+        this.playlistSelector.style.display = 'block';
         
-        if (!this.playlistSelector) {
-            console.error('❌ playlistSelector não encontrado');
-            return;
+        this.playlistList.innerHTML = '<li class="loading">📄 Detectando playlists disponíveis...</li>';
+        
+        try {
+            const detectedPlaylists = await this.detectAvailablePlaylists();
+            this.updatePlaylistList(detectedPlaylists);
+        } catch (error) {
+            this.updatePlaylistList(this.availablePlaylists.map(p => ({ ...p, available: false })));
+            ChannelModule.showMessage('⚠️ Erro ao detectar playlists', 'error');
         }
         
-        this.playlistSelector.style.display = 'block';
-        this.updatePlaylistList();
         AppState.currentView = 'playlists';
-        
         setTimeout(() => this.focusFirstPlaylist(), 100);
     },
     
-    updatePlaylistList() {
+    // Detecta playlists disponíveis - TIMEOUT AUMENTADO
+    async detectAvailablePlaylists() {
+        ChannelModule.showMessage('🔍 Verificando playlists disponíveis...', 'loading');
+        
         try {
-            if (!this.playlistList) {
-                console.error('❌ playlistList não encontrado');
-                return;
-            }
-
+            const promises = this.availablePlaylists.map(async playlist => {
+                try {
+                    // Timeout aumentado para 30 segundos
+                    const response = await fetch(`playlists/${playlist.filename}`, { 
+                        method: 'HEAD',
+                        cache: 'no-cache',
+                        signal: AbortSignal.timeout(30000)
+                    });
+                    
+                    return {
+                        ...playlist,
+                        available: response.ok,
+                        size: response.headers.get('content-length') || 'Desconhecido'
+                    };
+                } catch (error) {
+                    return { ...playlist, available: false };
+                }
+            });
+            
+            const results = await Promise.allSettled(promises);
+            return results.map(result => 
+                result.status === 'fulfilled' ? result.value : 
+                { ...this.availablePlaylists[results.indexOf(result)], available: false }
+            );
+            
+        } catch (error) {
+            console.error('Erro ao detectar playlists:', error);
+            return this.availablePlaylists.map(p => ({ ...p, available: false }));
+        }
+    },
+    
+    // Atualiza lista de playlists locais
+    updatePlaylistList(playlists) {
+        try {
             const fragment = document.createDocumentFragment();
             
-            // Header
-            const header = document.createElement('li');
-            header.innerHTML = '<strong>📁 Playlists Locais</strong>';
-            header.className = 'section-header';
-            header.style.cssText = 'color: #6bff6b; padding: 10px 0; list-style: none;';
-            fragment.appendChild(header);
+            // Opção manual
+            const manualLi = document.createElement('li');
+            manualLi.textContent = '✏️ Digite nome do arquivo manualmente';
+            manualLi.className = 'playlist-item manual-input';
+            manualLi.setAttribute('tabindex', '0');
+            manualLi.onclick = () => {
+                const filename = prompt('Digite o nome do arquivo da playlist (ex: minha-playlist.m3u8):');
+                if (filename?.trim()) {
+                    this.loadPlaylistFromFile(filename.trim());
+                }
+            };
+            fragment.appendChild(manualLi);
             
-            // Playlists do app (otimizadas)
-            const localPlaylists = PlaylistConfig.availablePlaylists || [];
-            localPlaylists.forEach(playlist => {
-                const li = document.createElement('li');
-                li.className = 'playlist-item';
-                li.setAttribute('tabindex', '0');
-                li.innerHTML = `
-                    <div style="padding: 10px; cursor: pointer;">
-                        <strong>📦 ${playlist.name}</strong>
-                        <div style="font-size: 0.9em; color: #ccc;">
-                            Arquivo local: ${playlist.filename}
-                        </div>
-                    </div>
-                `;
-                li.addEventListener('click', () => {
-                    console.log('📦 Carregando playlist local:', playlist.name);
-                    // Usar sistema otimizado
-                    if (typeof PlaylistModuleLocal !== 'undefined') {
-                        PlaylistModuleLocal.loadLocalPlaylistOptimized(
-                            playlist.filename, 
-                            playlist.name
-                        );
-                    } else {
-                        console.warn('⚠️ PlaylistModuleLocal não disponível, usando modo normal');
-                        this.loadLocalPlaylistNormal(playlist.filename, playlist.name);
-                    }
+            const availablePlaylist = playlists.filter(p => p.available);
+            const unavailablePlaylist = playlists.filter(p => !p.available);
+            
+            // Playlists disponíveis
+            if (availablePlaylist.length > 0) {
+                const headerLi = document.createElement('li');
+                headerLi.innerHTML = '<strong>📂 Disponíveis:</strong>';
+                headerLi.className = 'section-header';
+                headerLi.style.cssText = 'color: #6bff6b; padding: 5px 0;';
+                fragment.appendChild(headerLi);
+                
+                availablePlaylist.forEach(playlist => {
+                    const li = document.createElement('li');
+                    li.textContent = `✅ ${playlist.name} (${playlist.filename})`;
+                    li.className = 'playlist-item available-playlist';
+                    li.setAttribute('tabindex', '0');
+                    li.dataset.filename = playlist.filename;
+                    li.onclick = () => this.loadPlaylistFromFile(playlist.filename);
+                    fragment.appendChild(li);
                 });
-                fragment.appendChild(li);
-            });
-            
-            // Separador
-            if (localPlaylists.length > 0) {
-                const separator = document.createElement('li');
-                separator.style.cssText = 'border-top: 1px solid #333; margin: 10px 0;';
-                fragment.appendChild(separator);
             }
             
-            // Opção: Carregar do dispositivo
-            const uploadItem = document.createElement('li');
-            uploadItem.className = 'playlist-item';
-            uploadItem.setAttribute('tabindex', '0');
-            uploadItem.innerHTML = `
-                <div style="padding: 10px; cursor: pointer;">
-                    <strong>📤 Carregar do dispositivo</strong>
-                    <div style="font-size: 0.9em; color: #ccc;">Selecione um arquivo .m3u ou .m3u8</div>
-                </div>
-            `;
-            uploadItem.addEventListener('click', () => {
-                console.log('📤 Upload clicked');
-                this.triggerFileUpload();
-            });
-            fragment.appendChild(uploadItem);
-            
-            // Opção: Carregar de URL
-            const urlItem = document.createElement('li');
-            urlItem.className = 'playlist-item';
-            urlItem.setAttribute('tabindex', '0');
-            urlItem.innerHTML = `
-                <div style="padding: 10px; cursor: pointer;">
-                    <strong>🔗 Carregar de URL</strong>
-                    <div style="font-size: 0.9em; color: #ccc;">Digite o endereço de uma playlist</div>
-                </div>
-            `;
-            urlItem.addEventListener('click', () => {
-                console.log('🔗 URL clicked');
-                this.loadFromUrl();
-            });
-            fragment.appendChild(urlItem);
+            // Playlists indisponíveis
+            if (unavailablePlaylist.length > 0) {
+                const headerLi = document.createElement('li');
+                headerLi.innerHTML = '<strong>🔒 Indisponíveis:</strong>';
+                headerLi.className = 'section-header';
+                headerLi.style.cssText = 'color: #ff6b6b; padding: 5px 0;';
+                fragment.appendChild(headerLi);
+                
+                unavailablePlaylist.forEach(playlist => {
+                    const li = document.createElement('li');
+                    li.textContent = `❌ ${playlist.name} (${playlist.filename})`;
+                    li.className = 'playlist-item unavailable-playlist';
+                    li.setAttribute('tabindex', '0');
+                    li.dataset.filename = playlist.filename;
+                    li.onclick = () => {
+                        if (confirm(`Arquivo ${playlist.filename} não encontrado. Tentar carregar mesmo assim?`)) {
+                            this.loadPlaylistFromFile(playlist.filename);
+                        }
+                    };
+                    fragment.appendChild(li);
+                });
+            }
             
             this.playlistList.innerHTML = '';
             this.playlistList.appendChild(fragment);
             
             AppState.playlistItems = Array.from(document.querySelectorAll('.playlist-item'));
-            console.log(`✅ ${AppState.playlistItems.length} opções de playlist local carregadas`);
+            
+            const totalAvailable = availablePlaylist.length;
+            const totalFiles = playlists.length;
+            ChannelModule.showMessage(`📊 ${totalAvailable} de ${totalFiles} playlists encontradas`, 'success');
             
         } catch (error) {
-            console.error('❌ Erro ao atualizar lista de playlists locais:', error);
+            console.error('Erro ao atualizar lista de playlists:', error);
+            ChannelModule.showMessage('❌ Erro ao atualizar lista', 'error');
         }
     },
     
-    // Fallback para modo normal
-    async loadLocalPlaylistNormal(filename, displayName) {
+    // Carrega playlist de arquivo local - TIMEOUT AUMENTADO
+    async loadPlaylistFromFile(filename) {
         try {
-            const response = await fetch(`/playlists/${filename}`);
-            if (!response.ok) {
-                throw new Error(`Arquivo não encontrado: ${filename}`);
+            if (!filename) {
+                throw new Error('Nome do arquivo não fornecido');
             }
             
-            const content = await response.text();
-            const parsed = await this.parsePlaylistAsync(content);
+            const cacheKey = `local_${filename}`;
+            const cached = AppState.getCachedPlaylist(cacheKey);
             
-            this.setPlaylist(parsed, displayName, 'local');
-        } catch (error) {
-            console.error('❌ Erro:', error);
-            ChannelModule.showMessage(`❌ ${error.message}`, 'error');
-        }
-    },
-    
-    triggerFileUpload() {
-        console.log('📤 triggerFileUpload()');
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.m3u,.m3u8';
-        input.onchange = (e) => this.handleFileUpload(e);
-        input.click();
-    },
-    
-    async handleFileUpload(event) {
-        try {
-            const file = event.target.files[0];
-            if (!file) return;
+            if (cached) {
+                console.log('📦 Usando playlist local em cache:', filename);
+                this.setPlaylist(cached, filename, 'local');
+                return;
+            }
             
-            console.log('📄 Arquivo selecionado:', file.name);
-            ChannelModule.showMessage(`⏳ Carregando ${file.name}...`, 'loading');
+            ChannelModule.showMessage(`📄 Carregando ${filename}...`, 'loading');
             
-            const content = await file.text();
-            
-            const parsed = await this.parsePlaylistAsync(content, (progress, message) => {
-                this.showProgressMessage(file.name, progress, message);
+            // Timeout aumentado para 30 segundos
+            const response = await fetch(`playlists/${filename}`, {
+                cache: 'no-cache',
+                signal: AbortSignal.timeout(30000)
             });
             
-            if (parsed.length === 0) {
-                throw new Error('Nenhum canal encontrado no arquivo');
+            if (!response.ok) {
+                throw new Error(`Playlist ${filename} não encontrada (${response.status})`);
             }
             
-            this.setPlaylist(parsed, file.name, 'local');
+            const data = await response.text();
+            const parsedPlaylist = this.parsePlaylist(data);
+            
+            if (parsedPlaylist.length === 0) {
+                throw new Error('Playlist vazia ou formato inválido');
+            }
+            
+            AppState.cachePlaylist(cacheKey, parsedPlaylist);
+            this.setPlaylist(parsedPlaylist, filename, 'local');
             
         } catch (error) {
-            console.error('❌ Erro ao carregar arquivo:', error);
+            console.error('Erro ao carregar playlist local:', error);
             ChannelModule.showMessage(`❌ Erro: ${error.message}`, 'error');
         }
     },
     
+    // Carrega de URL - COM SUPORTE CORS
     async loadFromUrl() {
-        console.log('🔗 loadFromUrl()');
-        const url = prompt('Digite a URL da playlist:');
-        if (!url) return;
-        
         try {
-            if (!this.isValidUrl(url)) {
-                throw new Error('URL inválida');
+            const url = prompt('Digite a URL da playlist (.m3u8):');
+            if (!url?.trim()) return;
+            
+            const trimmedUrl = url.trim();
+            if (!this.isValidUrl(trimmedUrl)) {
+                throw new Error('URL inválida. Use http:// ou https://');
             }
             
-            await this.loadRemotePlaylist(url, 'Playlist URL', false);
+            const cached = AppState.getCachedPlaylist(trimmedUrl);
+            if (cached) {
+                console.log('📦 Usando playlist de URL em cache');
+                this.setPlaylist(cached, `URL: ${trimmedUrl}`, 'url');
+                return;
+            }
+            
+            ChannelModule.showMessage('📄 Carregando playlist de URL... Aguarde...', 'loading');
+            
+            // Perguntar se precisa de proxy CORS
+            const needsCors = confirm('Esta URL está bloqueada por CORS?\n\nClique OK se a URL der erro de CORS\nClique Cancelar para tentar carregamento direto');
+            
+            let response;
+            
+            if (needsCors) {
+                response = await this.fetchWithCorsProxy(trimmedUrl);
+            } else {
+                response = await fetch(trimmedUrl);
+            }
+            
+            if (!response.ok) {
+                throw new Error(`URL inválida (${response.status})`);
+            }
+            
+            const data = await response.text();
+            const parsedPlaylist = this.parsePlaylist(data);
+            
+            if (parsedPlaylist.length === 0) {
+                throw new Error('Playlist vazia ou formato inválido');
+            }
+            
+            AppState.cachePlaylist(trimmedUrl, parsedPlaylist);
+            this.setPlaylist(parsedPlaylist, `URL: ${trimmedUrl}`, 'url');
             
         } catch (error) {
-            console.error('❌ Erro ao carregar URL:', error);
-            ChannelModule.showMessage(`❌ ${error.message}`, 'error');
+            console.error('Erro ao carregar por URL:', error);
+            ChannelModule.showMessage(`❌ Erro: ${error.message}`, 'error');
         }
     },
     
-    // ========================================
-    // 🎯 HELPERS
-    // ========================================
+    // Canal único
+    loadSingleChannel() {
+        try {
+            const url = prompt('Digite a URL do canal (.m3u8 ou .mp4):');
+            if (!url?.trim()) return;
+            
+            const trimmedUrl = url.trim();
+            if (!this.isValidUrl(trimmedUrl)) {
+                throw new Error('URL inválida. Use http:// ou https://');
+            }
+            
+            const playlist = [{ url: trimmedUrl, name: 'Canal Único', group: 'Único' }];
+            this.setPlaylist(playlist, 'Canal Único', 'single');
+            
+        } catch (error) {
+            console.error('Erro ao carregar canal único:', error);
+            ChannelModule.showMessage(`❌ Erro: ${error.message}`, 'error');
+        }
+    },
+    
+    // Upload de arquivo
+    handleFileUpload() {
+        try {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.m3u,.m3u8';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                ChannelModule.showMessage(`📤 Carregando ${file.name}...`, 'loading');
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const content = event.target.result;
+                        const parsedPlaylist = this.parsePlaylist(content);
+                        
+                        if (parsedPlaylist.length > 0) {
+                            this.setPlaylist(parsedPlaylist, file.name, 'upload');
+                            ChannelModule.showMessage(`✅ ${file.name} carregada (${parsedPlaylist.length} canais)`, 'success');
+                        } else {
+                            throw new Error('Nenhum canal válido encontrado');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao processar arquivo:', error);
+                        ChannelModule.showMessage(`❌ Erro ao processar ${file.name}`, 'error');
+                    }
+                };
+                
+                reader.onerror = () => {
+                    ChannelModule.showMessage(`❌ Erro ao ler arquivo ${file.name}`, 'error');
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+            
+        } catch (error) {
+            console.error('Erro no upload:', error);
+            ChannelModule.showMessage('❌ Erro ao abrir seletor de arquivo', 'error');
+        }
+    },
+    
+    // Define playlist ativa
     setPlaylist(urls, name, type) {
-        console.log('🎯 setPlaylist:', name, 'com', urls.length, 'canais');
-        AppState.setPlaylist(urls, name, type);
-        ChannelModule.updateChannelList();
-        this.hideAllSelectors();
+    // Aplicar filtros automáticos ocultos
+    const filtered = FilterModule.applyFilters(urls);
+
+    // Salvar playlist filtrada
+    AppState.setPlaylist(filtered, name, type);
+
+    ChannelModule.updateChannelList();
+    this.hideAllSelectors();
+
         
         setTimeout(() => {
             if (AppState.channelItems.length > 0) {
@@ -745,6 +741,62 @@ const PlaylistModule = {
         ChannelModule.showMessage(`✅ ${name} carregada com ${urls.length} canais`, 'success');
     },
     
+    // Parser de playlist
+    parsePlaylist(content) {
+        try {
+            if (!content || typeof content !== 'string') {
+                throw new Error('Conteúdo da playlist inválido');
+            }
+            
+            const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line);
+            const parsed = [];
+            let currentName = '';
+            let currentGroup = 'Outros';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.startsWith('#EXTINF')) {
+                    const groupMatch = line.match(/group-title="([^"]+)"/i);
+                    currentGroup = groupMatch ? groupMatch[1].trim() : 'Outros';
+                    
+                    const commaIndex = line.lastIndexOf(',');
+                    if (commaIndex !== -1) {
+                        currentName = line.substring(commaIndex + 1).trim();
+                    }
+                    
+                    if (!currentName && i + 1 < lines.length && !lines[i + 1].startsWith('http')) {
+                        currentName = lines[i + 1];
+                        i++;
+                    }
+                    
+                    if (!currentName) {
+                        currentName = 'Canal Desconhecido';
+                    }
+                } else if (line.startsWith('http')) {
+                    if (this.isValidUrl(line)) {
+                        parsed.push({
+                            url: line,
+                            name: currentName || 'Canal Desconhecido',
+                            group: currentGroup || 'Outros'
+                        });
+                    }
+                    
+                    currentName = '';
+                    currentGroup = 'Outros';
+                }
+            }
+            
+            console.log(`📋 Playlist parseada: ${parsed.length} canais encontrados`);
+            return parsed;
+            
+        } catch (error) {
+            console.error('Erro ao parsear playlist:', error);
+            return [];
+        }
+    },
+    
+    // Utilitários
     isValidUrl(string) {
         try {
             const url = new URL(string);
@@ -755,13 +807,13 @@ const PlaylistModule = {
     },
     
     hideAllSelectors() {
-        if (this.playlistSelector) this.playlistSelector.style.display = 'none';
-        if (this.remotePlaylistSelector) this.remotePlaylistSelector.style.display = 'none';
+        this.playlistSelector.style.display = 'none';
+        this.remotePlaylistSelector.style.display = 'none';
     },
     
     focusFirstPlaylist() {
         setTimeout(() => {
-            if (AppState.playlistItems && AppState.playlistItems.length) {
+            if (AppState.playlistItems.length) {
                 AppState.playlistFocusIndex = 0;
                 const firstItem = AppState.playlistItems[0];
                 firstItem.focus();
@@ -772,7 +824,7 @@ const PlaylistModule = {
     
     focusFirstRemotePlaylist() {
         setTimeout(() => {
-            if (AppState.remotePlaylistItems && AppState.remotePlaylistItems.length) {
+            if (AppState.remotePlaylistItems.length) {
                 AppState.remoteFocusIndex = 0;
                 const firstItem = AppState.remotePlaylistItems[0];
                 firstItem.focus();
@@ -787,23 +839,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = PlaylistModule;
 }
 
-console.log('✅ PlaylistModule carregado (v3.1 - CORRIGIDO E OTIMIZADO)');
+console.log('✅ PlaylistModule carregado (v3.0 - com suporte CORS)');
 
-// ======================================================
-// 🔁 HELPER GLOBAL (TIZEN-SAFE)
-// ======================================================
-function extractFirstPlaylistUrl(content) {
-    if (!content || typeof content !== 'string') return null;
 
-    var lines = content.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-        var trimmed = lines[i].trim();
-        if (
-            trimmed.indexOf('http://') === 0 ||
-            trimmed.indexOf('https://') === 0
-        ) {
-            return trimmed;
-        }
-    }
-    return null;
-}
+
