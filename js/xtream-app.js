@@ -520,14 +520,23 @@ const XtreamApp = {
     // AÇÕES
     // ═══════════════════════════════════════════════════════════
 
+    
     playChannel(channel, index) {
         console.log(`▶️ ${channel.name}`);
 
         // Salva índice para restaurar foco ao fechar
         this.state._lastFocusIndex = index;
 
+        // Corrige protocolo da URL do stream para HTTPS se necessário
+        let streamUrl = channel.url;
+        if (window.location.protocol === 'https:' && streamUrl.startsWith('http://')) {
+            // Tenta HTTPS direto primeiro (muitos servidores IPTV aceitam)
+            streamUrl = streamUrl.replace('http://', 'https://');
+            console.log('🔒 URL convertida para HTTPS:', streamUrl);
+        }
+
         // Abre player como overlay (iframe) sem sair da página
-        this.openPlayerOverlay(channel.url, channel.name, index);
+        this.openPlayerOverlay(streamUrl, channel.name, index);
     },
 
     /**
@@ -560,7 +569,7 @@ const XtreamApp = {
             flex-direction: column;
         `;
 
-        // Barra de título com botão fechar
+        // Barra de título
         const titleBar = document.createElement('div');
         titleBar.id = 'playerOverlayTitleBar';
         titleBar.style.cssText = `
@@ -578,11 +587,10 @@ const XtreamApp = {
             transition: opacity 0.3s;
         `;
         titleBar.innerHTML = `
-            <span id="overlayChannelTitle" style="color:#fff;font-size:16px;text-shadow:0 1px 4px #000;">▶️ ${name}</span>
+            <span style="color:#fff;font-size:16px;text-shadow:0 1px 4px #000;">▶️ ${name}</span>
             <span style="color:#aaa;font-size:13px;">BACK / ESC para fechar</span>
         `;
 
-        // Mostra barra ao mover mouse, esconde depois
         container.addEventListener('mousemove', () => {
             titleBar.style.opacity = '1';
             clearTimeout(this._titleBarTimer);
@@ -599,56 +607,42 @@ const XtreamApp = {
             border: none;
             background: #000;
         `;
-        iframe.allow = 'autoplay; fullscreen';
+        iframe.allow = 'autoplay; fullscreen; encrypted-media';
+        // Permite mixed content no iframe
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
 
         container.appendChild(titleBar);
         container.appendChild(iframe);
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
 
-        // Escuta mensagem de fechamento vinda do iframe
+        // Escuta mensagens do iframe
         this._overlayMessageHandler = (event) => {
             if (event.data && event.data.type === 'close') {
                 console.log('📤 Player overlay solicitou fechamento');
                 this.closePlayerOverlay();
             }
-            // Repassa pedido de playlist para o iframe
             if (event.data && event.data.type === 'request-playlist') {
-                const playlist = this.state.currentChannels.map(ch => ({
-                    url: ch.url,
-                    name: ch.name
-                }));
+                // Envia playlist com URLs já corrigidas para HTTPS
+                const playlist = this.state.currentChannels.map(ch => {
+                    let chUrl = ch.url;
+                    if (window.location.protocol === 'https:' && chUrl.startsWith('http://')) {
+                        chUrl = chUrl.replace('http://', 'https://');
+                    }
+                    return { url: chUrl, name: ch.name };
+                });
                 iframe.contentWindow.postMessage({
                     type: 'playlist-data',
                     playlist: playlist,
                     currentIndex: index
                 }, '*');
             }
-            // 🔼🔽 Troca de canal via setas ↑↓ do controle remoto
-            if (event.data && event.data.type === 'switch-channel') {
-                const delta = event.data.delta || 0;
-                const channels = this.state.currentChannels;
-                if (!channels || !channels.length) return;
-                index = (index + delta + channels.length) % channels.length;
-                const ch = channels[index];
-                console.log(`🔄 switch-channel(${delta}) → [${index}] ${ch.name}`);
-                iframe.contentWindow.postMessage({
-                    type: 'play-channel',
-                    url: ch.url,
-                    name: ch.name,
-                    index: index
-                }, '*');
-                // Atualiza título da titleBar
-                const titleEl = document.getElementById('overlayChannelTitle');
-                if (titleEl) titleEl.textContent = '📺 ' + ch.name;
-            }
         };
         window.addEventListener('message', this._overlayMessageHandler);
 
-        // Tecla Escape/Back no contexto da página principal também fecha
+        // Tecla Escape/Back
         this._overlayKeyHandler = (e) => {
             const code = e.keyCode || e.which;
-            // Só fecha se o foco não estiver dentro do iframe
             if (document.activeElement === iframe) return;
             if (e.key === 'Escape' || code === 27 || code === 10009) {
                 e.preventDefault();
@@ -658,7 +652,6 @@ const XtreamApp = {
         };
         document.addEventListener('keydown', this._overlayKeyHandler, true);
 
-        // Foca o iframe para que o player receba teclas
         iframe.addEventListener('load', () => {
             iframe.contentWindow.focus();
         });
@@ -670,7 +663,6 @@ const XtreamApp = {
      * Fecha o overlay do player e restaura foco na lista
      */
     closePlayerOverlay() {
-        // Remove handlers
         if (this._overlayMessageHandler) {
             window.removeEventListener('message', this._overlayMessageHandler);
             this._overlayMessageHandler = null;
@@ -681,20 +673,18 @@ const XtreamApp = {
         }
         clearTimeout(this._titleBarTimer);
 
-        // Remove elementos do DOM
         const backdrop = document.getElementById('playerOverlayBackdrop');
         const container = document.getElementById('playerOverlayContainer');
         if (backdrop) backdrop.remove();
         if (container) container.remove();
 
-        // Restaura foco na lista de canais
         setTimeout(() => {
             const savedIdx = this.state._lastFocusIndex ?? XtreamNavigation.focusIndex;
             XtreamNavigation.focusIndex = savedIdx;
             XtreamNavigation.updateFocus();
         }, 100);
 
-        console.log('🖥️ Player overlay fechado – tela anterior restaurada');
+        console.log('🖥️ Player overlay fechado');
     },
 
     // ═══════════════════════════════════════════════════════════
@@ -821,4 +811,5 @@ const XtreamApp = {
 
 document.addEventListener('DOMContentLoaded', () => XtreamApp.init());
 window.XtreamApp = XtreamApp;
+
 console.log('✅ XtreamApp v1.4 carregado');
