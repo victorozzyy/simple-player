@@ -1,325 +1,277 @@
+// xtream-client.js - Adicione/substitua o método request
 /**
- * XtreamClient v1.0
- * Cliente para API Xtream Codes
- * Compatível com Smart TV Tizen
+ * XtreamClient v1.1
+ * - Compatível com GitHub Pages (HTTPS)
+ * - Proxy automático para servidores HTTP
+ * - Fallback inteligente
  */
 
 const XtreamClient = {
-    // Configurações
-    config: {
-        host: '',
-        username: '',
-        password: '',
-        apiUrl: ''
-    },
-    
-    // Cache de dados
-    cache: {
-        categories: { live: null, vod: null, series: null },
-        streams: {},
-        seriesInfo: {}
-    },
-    
-    // Estado
-    isAuthenticated: false,
+
+    // ═══════════════════════════════════════════════════════════
+    // CONFIGURAÇÃO
+    // ═══════════════════════════════════════════════════════════
+
+    host: '',
+    username: '',
+    password: '',
     userInfo: null,
     serverInfo: null,
 
-    /**
-     * Configura o cliente
-     */
+    // Proxies para contornar Mixed Content (HTTPS → HTTP)
+    PROXIES: [
+        '',                                          // direto
+        'https://corsproxy.io/?',                    // proxy 1
+        'https://api.allorigins.win/raw?url=',       // proxy 2
+        'https://api.codetabs.com/v1/proxy?quest=',  // proxy 3
+    ],
+
+    // Cache do proxy que funcionou (evita tentar todos de novo)
+    _workingProxyIndex: -1,
+
+    // ═══════════════════════════════════════════════════════════
+    // CONFIGURAR
+    // ═══════════════════════════════════════════════════════════
+
     configure(host, username, password) {
-        this.config.host = host.replace(/\/+$/, '');
-        this.config.username = username;
-        this.config.password = password;
-        this.config.apiUrl = `${this.config.host}/player_api.php`;
-        
-        this.clearCache();
-        this.isAuthenticated = false;
-        
-        console.log('🔧 XtreamClient configurado:', this.config.host);
+        // Remove trailing slash
+        this.host = host.replace(/\/+$/, '');
+        this.username = username;
+        this.password = password;
+        this._workingProxyIndex = -1;  // Reset proxy cache ao mudar de servidor
+        console.log('🔧 XtreamClient configurado:', this.host);
     },
 
-    /**
-     * Configura a partir de URL M3U
-     */
-    configureFromM3U(m3uUrl) {
-        try {
-            const url = new URL(m3uUrl);
-            const username = url.searchParams.get('username');
-            const password = url.searchParams.get('password');
-            
-            if (!username || !password) {
-                console.warn('⚠️ URL não contém credenciais Xtream');
-                return false;
-            }
-            
-            const host = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
-            this.configure(host, username, password);
-            
-            return true;
-        } catch (error) {
-            console.error('❌ Erro ao extrair credenciais:', error);
-            return false;
-        }
-    },
+    // ═══════════════════════════════════════════════════════════
+    // REQUEST COM PROXY AUTOMÁTICO
+    // ═══════════════════════════════════════════════════════════
 
     /**
-     * Limpa cache
+     * Faz requisição com fallback automático de proxy
+     * @param {string} endpoint - Caminho relativo (ex: /player_api.php?...)
+     * @returns {Promise<Object>} JSON response
      */
-    clearCache() {
-        this.cache = {
-            categories: { live: null, vod: null, series: null },
-            streams: {},
-            seriesInfo: {}
-        };
-    },
+    async request(endpoint) {
+        const fullUrl = `${this.host}${endpoint}`;
+        const pageIsHTTPS = window.location.protocol === 'https:';
+        const urlIsHTTP = fullUrl.startsWith('http://');
+        const needsProxy = pageIsHTTPS && urlIsHTTP;
 
-    /**
-     * Requisição à API
-     */
-    async request(params = {}) {
-        if (!this.config.username || !this.config.password) {
-            throw new Error('XtreamClient não configurado');
-        }
-
-        // Monta URL com parâmetros GET (mais compatível)
-        const queryParams = new URLSearchParams({
-            username: this.config.username,
-            password: this.config.password,
-            ...params
-        });
-
-        const url = `${this.config.apiUrl}?${queryParams.toString()}`;
-
-        try {
-            // Tenta requisição direta
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            return await response.json();
-            
-        } catch (error) {
-            console.warn('⚠️ Requisição direta falhou, tentando proxy...');
-            return await this.requestWithProxy(params);
-        }
-    },
-
-    /**
-     * Requisição via proxy CORS
-     */
-    async requestWithProxy(params = {}) {
-        const proxies = [
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url='
-        ];
-
-        const queryParams = new URLSearchParams({
-            username: this.config.username,
-            password: this.config.password,
-            ...params
-        });
-
-        const fullUrl = `${this.config.apiUrl}?${queryParams.toString()}`;
-
-        for (let i = 0; i < proxies.length; i++) {
+        // Se não precisa de proxy, tenta direto
+        if (!needsProxy) {
             try {
-                console.log(`🔄 Proxy ${i + 1}/${proxies.length}...`);
-                
-                const proxyUrl = proxies[i] + encodeURIComponent(fullUrl);
-                const response = await fetch(proxyUrl);
-                
+                const response = await fetch(fullUrl, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(15000)
+                });
+                if (response.ok) return await response.json();
+            } catch (e) {
+                console.warn('⚠️ Requisição direta falhou:', e.message);
+            }
+        }
+
+        // Se já sabemos qual proxy funciona, tenta ele primeiro
+        if (this._workingProxyIndex >= 0) {
+            try {
+                const proxy = this.PROXIES[this._workingProxyIndex];
+                const target = proxy + encodeURIComponent(fullUrl);
+                const response = await fetch(target, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(15000)
+                });
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`✅ Sucesso com proxy ${i + 1}`);
                     return data;
                 }
             } catch (e) {
-                console.warn(`❌ Proxy ${i + 1} falhou`);
+                console.warn(`⚠️ Proxy cached (${this._workingProxyIndex}) falhou, tentando outros...`);
+                this._workingProxyIndex = -1;
             }
         }
 
-        throw new Error('Todos os proxies falharam');
+        // Tenta todos os proxies em sequência
+        const startIndex = needsProxy ? 1 : 0;  // Pula direto se precisa proxy
+        for (let i = startIndex; i < this.PROXIES.length; i++) {
+            try {
+                const proxy = this.PROXIES[i];
+                const target = proxy ? proxy + encodeURIComponent(fullUrl) : fullUrl;
+
+                console.log(`🔄 Proxy ${i}/${this.PROXIES.length - 1}...`);
+
+                const response = await fetch(target, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(20000)
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+
+                    // Verifica se é JSON válido
+                    try {
+                        const data = JSON.parse(text);
+                        console.log(`✅ Sucesso com proxy ${i}`);
+                        this._workingProxyIndex = i;  // Cacheia proxy funcional
+                        return data;
+                    } catch (parseErr) {
+                        console.warn(`⚠️ Proxy ${i} retornou não-JSON:`, text.substring(0, 100));
+                        continue;
+                    }
+                }
+            } catch (e) {
+                console.warn(`⚠️ Proxy ${i} falhou:`, e.message);
+                continue;
+            }
+        }
+
+        throw new Error(`Falha ao conectar: ${fullUrl} (todos os proxies falharam)`);
     },
 
-    // ==================== AUTENTICAÇÃO ====================
+    // ═══════════════════════════════════════════════════════════
+    // AUTENTICAÇÃO
+    // ═══════════════════════════════════════════════════════════
 
     async authenticate() {
         try {
-            const data = await this.request();
-            
-            if (data.user_info && data.user_info.auth === 1) {
-                this.isAuthenticated = true;
+            const data = await this.request(
+                `/player_api.php?username=${this.username}&password=${this.password}`
+            );
+
+            if (data.user_info) {
                 this.userInfo = data.user_info;
                 this.serverInfo = data.server_info;
-                
                 console.log('✅ Autenticado:', this.userInfo.username);
-                return { success: true, data };
-            } else {
-                this.isAuthenticated = false;
-                return { success: false, error: 'Credenciais inválidas' };
+                return { success: true, userInfo: this.userInfo };
             }
-        } catch (error) {
-            this.isAuthenticated = false;
-            return { success: false, error: error.message };
+
+            return { success: false, error: 'Credenciais inválidas' };
+        } catch (err) {
+            return { success: false, error: err.message };
         }
     },
 
-    // ==================== CANAIS AO VIVO ====================
+    // ═══════════════════════════════════════════════════════════
+    // CATEGORIAS
+    // ═══════════════════════════════════════════════════════════
 
-    async getLiveCategories(useCache = true) {
-        if (useCache && this.cache.categories.live) {
-            return this.cache.categories.live;
+    async getLiveCategories() {
+        return await this.request(
+            `/player_api.php?username=${this.username}&password=${this.password}&action=get_live_categories`
+        );
+    },
+
+    async getVodCategories() {
+        return await this.request(
+            `/player_api.php?username=${this.username}&password=${this.password}&action=get_vod_categories`
+        );
+    },
+
+    async getSeriesCategories() {
+        return await this.request(
+            `/player_api.php?username=${this.username}&password=${this.password}&action=get_series_categories`
+        );
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // STREAMS
+    // ═══════════════════════════════════════════════════════════
+
+    async getLiveStreams(categoryId) {
+        let endpoint = `/player_api.php?username=${this.username}&password=${this.password}&action=get_live_streams`;
+        if (categoryId) endpoint += `&category_id=${categoryId}`;
+        return await this.request(endpoint);
+    },
+
+    async getVodStreams(categoryId) {
+        let endpoint = `/player_api.php?username=${this.username}&password=${this.password}&action=get_vod_streams`;
+        if (categoryId) endpoint += `&category_id=${categoryId}`;
+        return await this.request(endpoint);
+    },
+
+    async getSeriesForCategory(categoryId) {
+        let endpoint = `/player_api.php?username=${this.username}&password=${this.password}&action=get_series`;
+        if (categoryId) endpoint += `&category_id=${categoryId}`;
+        return await this.request(endpoint);
+    },
+
+    async getSeriesInfo(seriesId) {
+        return await this.request(
+            `/player_api.php?username=${this.username}&password=${this.password}&action=get_series_info&series_id=${seriesId}`
+        );
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // CONVERSORES — Streams API → formato M3U interno
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Gera URL base do stream baseado no host configurado
+     * IMPORTANTE: mantém o protocolo original do host
+     */
+    getStreamBaseUrl() {
+        return this.host;
+    },
+
+    convertLiveToM3UFormat(streams, categories) {
+        if (!streams || !Array.isArray(streams)) return [];
+
+        const catMap = {};
+        if (categories) {
+            categories.forEach(c => { catMap[c.category_id] = c.category_name; });
         }
-        const data = await this.request({ action: 'get_live_categories' });
-        this.cache.categories.live = data;
-        return data;
-    },
-
-    async getLiveStreams(categoryId, useCache = true) {
-        const cacheKey = `live_${categoryId || 'all'}`;
-        
-        if (useCache && this.cache.streams[cacheKey]) {
-            return this.cache.streams[cacheKey];
-        }
-
-        const params = { action: 'get_live_streams' };
-        if (categoryId) params.category_id = categoryId;
-        
-        const data = await this.request(params);
-        this.cache.streams[cacheKey] = data;
-        return data;
-    },
-
-    getLiveStreamUrl(streamId) {
-        return `${this.config.host}/live/${this.config.username}/${this.config.password}/${streamId}.ts`;
-    },
-
-    // ==================== VOD (FILMES) ====================
-
-    async getVodCategories(useCache = true) {
-        if (useCache && this.cache.categories.vod) {
-            return this.cache.categories.vod;
-        }
-        const data = await this.request({ action: 'get_vod_categories' });
-        this.cache.categories.vod = data;
-        return data;
-    },
-
-    async getVodStreams(categoryId, useCache = true) {
-        const cacheKey = `vod_${categoryId || 'all'}`;
-        
-        if (useCache && this.cache.streams[cacheKey]) {
-            return this.cache.streams[cacheKey];
-        }
-
-        const params = { action: 'get_vod_streams' };
-        if (categoryId) params.category_id = categoryId;
-        
-        const data = await this.request(params);
-        this.cache.streams[cacheKey] = data;
-        return data;
-    },
-
-    getVodStreamUrl(streamId, extension = 'mp4') {
-        return `${this.config.host}/movie/${this.config.username}/${this.config.password}/${streamId}.${extension}`;
-    },
-
-    // ==================== SÉRIES ====================
-
-    async getSeriesCategories(useCache = true) {
-        if (useCache && this.cache.categories.series) {
-            return this.cache.categories.series;
-        }
-        const data = await this.request({ action: 'get_series_categories' });
-        this.cache.categories.series = data;
-        return data;
-    },
-
-    async getSeriesForCategory(categoryId, useCache = true) {
-        const cacheKey = `series_${categoryId || 'all'}`;
-        
-        if (useCache && this.cache.streams[cacheKey]) {
-            return this.cache.streams[cacheKey];
-        }
-
-        const params = { action: 'get_series' };
-        if (categoryId) params.category_id = categoryId;
-        
-        const data = await this.request(params);
-        this.cache.streams[cacheKey] = data;
-        return data;
-    },
-
-    async getSeriesInfo(seriesId, useCache = true) {
-        const cacheKey = `info_${seriesId}`;
-        
-        if (useCache && this.cache.seriesInfo[cacheKey]) {
-            return this.cache.seriesInfo[cacheKey];
-        }
-
-        const data = await this.request({ 
-            action: 'get_series_info', 
-            series_id: seriesId 
-        });
-        
-        this.cache.seriesInfo[cacheKey] = data;
-        return data;
-    },
-
-    getSeriesEpisodeUrl(episodeId, extension = 'mp4') {
-        return `${this.config.host}/series/${this.config.username}/${this.config.password}/${episodeId}.${extension}`;
-    },
-
-    // ==================== CONVERSÃO PARA M3U ====================
-
-    convertLiveToM3UFormat(streams, categories = []) {
-        const categoryMap = {};
-        categories.forEach(cat => {
-            categoryMap[cat.category_id] = cat.category_name;
-        });
 
         return streams.map(stream => ({
-            name: stream.name,
-            url: this.getLiveStreamUrl(stream.stream_id),
-            group: categoryMap[stream.category_id] || 'Sem Categoria',
+            name: stream.name || 'Sem nome',
             logo: stream.stream_icon || '',
-            tvgId: stream.epg_channel_id || '',
-            tvgName: stream.name
+            group: catMap[stream.category_id] || 'Sem categoria',
+            url: `${this.getStreamBaseUrl()}/live/${this.username}/${this.password}/${stream.stream_id}.m3u8`,
+            streamId: stream.stream_id,
+            type: 'live'
         }));
     },
 
-    convertVodToM3UFormat(streams, categories = []) {
-        const categoryMap = {};
-        categories.forEach(cat => {
-            categoryMap[cat.category_id] = cat.category_name;
-        });
+    convertVodToM3UFormat(streams, categories) {
+        if (!streams || !Array.isArray(streams)) return [];
 
-        return streams.map(stream => ({
-            name: stream.name,
-            url: this.getVodStreamUrl(stream.stream_id, stream.container_extension || 'mp4'),
-            group: categoryMap[stream.category_id] || 'Filmes',
-            logo: stream.stream_icon || ''
-        }));
+        const catMap = {};
+        if (categories) {
+            categories.forEach(c => { catMap[c.category_id] = c.category_name; });
+        }
+
+        return streams.map(stream => {
+            const ext = stream.container_extension || 'mp4';
+            return {
+                name: stream.name || 'Sem nome',
+                logo: stream.stream_icon || stream.cover || '',
+                group: catMap[stream.category_id] || 'Sem categoria',
+                url: `${this.getStreamBaseUrl()}/movie/${this.username}/${this.password}/${stream.stream_id}.${ext}`,
+                streamId: stream.stream_id,
+                type: 'vod'
+            };
+        });
     },
 
     convertSeriesToM3UFormat(seriesInfo) {
-        const episodes = [];
-        const info = seriesInfo.info || {};
+        if (!seriesInfo || !seriesInfo.episodes) return [];
 
-        Object.keys(seriesInfo.episodes || {}).forEach(seasonNum => {
-            const seasonEpisodes = seriesInfo.episodes[seasonNum];
-            
-            seasonEpisodes.forEach(ep => {
+        const episodes = [];
+        const seasons = seriesInfo.episodes;
+
+        Object.keys(seasons).sort((a, b) => parseInt(a) - parseInt(b)).forEach(seasonNum => {
+            const seasonEps = seasons[seasonNum];
+            if (!Array.isArray(seasonEps)) return;
+
+            seasonEps.forEach(ep => {
+                const ext = ep.container_extension || 'mp4';
                 episodes.push({
-                    name: `${info.name || 'Série'} - S${seasonNum.padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')} - ${ep.title}`,
-                    url: this.getSeriesEpisodeUrl(ep.id, ep.container_extension || 'mp4'),
-                    group: info.name || 'Séries',
-                    logo: info.cover || ''
+                    name: `S${seasonNum.padStart(2, '0')}E${String(ep.episode_num).padStart(2, '0')} - ${ep.title || 'Sem título'}`,
+                    logo: ep.info?.movie_image || seriesInfo.info?.cover || '',
+                    group: `Temporada ${seasonNum}`,
+                    url: `${this.getStreamBaseUrl()}/series/${this.username}/${this.password}/${ep.id}.${ext}`,
+                    streamId: ep.id,
+                    type: 'series'
                 });
             });
         });
@@ -328,7 +280,5 @@ const XtreamClient = {
     }
 };
 
-// Expor globalmente
 window.XtreamClient = XtreamClient;
-
-console.log('✅ XtreamClient v1.0 carregado');
+console.log('✅ XtreamClient v1.1 carregado');
