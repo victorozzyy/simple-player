@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  proxied,
   clearCreds,
   episodeUrl,
   getLiveCategories,
@@ -11,6 +10,7 @@ import {
   getVodCategories,
   getVodStreams,
   liveUrl,
+  mediaUrl,
   vodUrl,
   type LiveStream,
   type SeriesInfo,
@@ -373,7 +373,7 @@ function LiveSection({ creds, query }: { creds: XtreamCreds; query: string }) {
 
       {playing && (
         <Player
-          url={proxied(liveUrl(creds, playing.stream_id, "m3u8"))}
+          url={liveUrl(creds, playing.stream_id, "m3u8")}
           title={playing.name}
           subtitle="AO VIVO"
           poster={playing.stream_icon}
@@ -394,7 +394,7 @@ function ChannelCard({ s, onPlay }: { s: LiveStream; onPlay: () => void }) {
       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black">
         {s.stream_icon ? (
           <img
-            src={s.stream_icon}
+            src={mediaUrl(s.stream_icon)}
             alt=""
             loading="lazy"
             onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
@@ -489,7 +489,7 @@ function MoviesSection({ creds, query }: { creds: XtreamCreds; query: string }) 
 
       {playing && (
         <Player
-          url={proxied(vodUrl(creds, playing.stream_id, playing.container_extension || "mp4"))}
+          url={vodUrl(creds, playing.stream_id, playing.container_extension || "mp4")}
           title={playing.name}
           subtitle="Filme"
           poster={playing.stream_icon}
@@ -515,15 +515,16 @@ function PosterCard({
   onClick: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const safeIcon = mediaUrl(icon);
   return (
     <button
       onClick={onClick}
       className="group overflow-hidden rounded-md bg-[#1a1a20] text-left transition hover:z-10 hover:scale-[1.05] hover:ring-2 hover:ring-white/70"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-gradient-to-br from-indigo-900 to-fuchsia-900">
-        {icon && !failed ? (
+        {safeIcon && !failed ? (
           <img
-            src={icon}
+            src={safeIcon}
             alt={name}
             loading="lazy"
             onError={() => setFailed(true)}
@@ -557,6 +558,7 @@ function MovieModal({
   onClose: () => void;
   onPlay: () => void;
 }) {
+  const icon = mediaUrl(movie.stream_icon);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <div
@@ -564,12 +566,12 @@ function MovieModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative">
-          {movie.stream_icon && (
+          {icon && (
             <div className="relative h-56 w-full overflow-hidden">
-              <img src={movie.stream_icon} alt="" className="h-full w-full object-cover blur-sm opacity-40" />
+              <img src={icon} alt="" className="h-full w-full object-cover blur-sm opacity-40" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#141419] to-transparent" />
               <img
-                src={movie.stream_icon}
+                src={icon}
                 alt=""
                 className="absolute bottom-4 left-4 h-40 w-28 rounded-md object-cover shadow-xl"
               />
@@ -700,6 +702,7 @@ function SeriesModal({
   const info = useAsync(() => getSeriesInfo(creds, series.series_id), [creds, series.series_id]);
   const [season, setSeason] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ url: string; title: string; poster?: string } | null>(null);
+  const cover = mediaUrl(series.cover);
 
   const seasonKeys = useMemo(() => {
     const eps = (info.data as SeriesInfo | null)?.episodes;
@@ -718,12 +721,12 @@ function SeriesModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative">
-          {series.cover && (
+          {cover && (
             <div className="relative h-56 w-full overflow-hidden">
-              <img src={series.cover} alt="" className="h-full w-full object-cover blur-sm opacity-40" />
+              <img src={cover} alt="" className="h-full w-full object-cover blur-sm opacity-40" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#141419] to-transparent" />
               <img
-                src={series.cover}
+                src={cover}
                 alt=""
                 className="absolute bottom-4 left-4 h-40 w-28 rounded-md object-cover shadow-xl"
               />
@@ -773,40 +776,43 @@ function SeriesModal({
               </div>
 
               <div className="mt-4 space-y-2">
-                {(info.data as SeriesInfo).episodes[season ?? seasonKeys[0]]?.map((ep) => (
-                  <button
-                    key={ep.id}
-                    onClick={() =>
-                      setPlaying({
-                        url: episodeUrl(creds, ep.id, ep.container_extension || "mp4"),
-                        title: `${series.name} · T${season}E${ep.episode_num}`,
-                        poster: ep.info?.movie_image || series.cover,
-                      })
-                    }
-                    className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-white/30 hover:bg-white/[0.08]"
-                  >
-                    <span className="w-8 shrink-0 text-center text-lg font-bold text-white/40">
-                      {ep.episode_num}
-                    </span>
-                    {ep.info?.movie_image ? (
-                      <img
-                        src={ep.info.movie_image}
-                        alt=""
-                        loading="lazy"
-                        className="h-14 w-24 shrink-0 rounded object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-white/10 text-xl">▶</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{ep.title}</p>
-                      {ep.info?.plot && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-white/50">{ep.info.plot}</p>
+                {(info.data as SeriesInfo).episodes[season ?? seasonKeys[0]]?.map((ep) => {
+                  const epImage = mediaUrl(ep.info?.movie_image);
+                  return (
+                    <button
+                      key={ep.id}
+                      onClick={() =>
+                        setPlaying({
+                          url: episodeUrl(creds, ep.id, ep.container_extension || "mp4"),
+                          title: `${series.name} · T${season}E${ep.episode_num}`,
+                          poster: ep.info?.movie_image || series.cover,
+                        })
+                      }
+                      className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-white/30 hover:bg-white/[0.08]"
+                    >
+                      <span className="w-8 shrink-0 text-center text-lg font-bold text-white/40">
+                        {ep.episode_num}
+                      </span>
+                      {epImage ? (
+                        <img
+                          src={epImage}
+                          alt=""
+                          loading="lazy"
+                          className="h-14 w-24 shrink-0 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded bg-white/10 text-xl">▶</div>
                       )}
-                    </div>
-                    <span className="hidden text-xs text-white/40 sm:block">{ep.info?.duration || ""}</span>
-                  </button>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{ep.title}</p>
+                        {ep.info?.plot && (
+                          <p className="mt-0.5 line-clamp-2 text-xs text-white/50">{ep.info.plot}</p>
+                        )}
+                      </div>
+                      <span className="hidden text-xs text-white/40 sm:block">{ep.info?.duration || ""}</span>
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}

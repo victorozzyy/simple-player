@@ -83,7 +83,7 @@ export interface ServerInfo {
 
 // CORS proxy — GitHub Pages serves via HTTPS, target servers are HTTP,
 // so all requests need to route through an HTTPS CORS proxy.
-const CORS_PROXIES = [
+export const CORS_PROXIES = [
   "https://corsproxy.io/?url=",
   "https://api.allorigins.win/raw?url=",
   "https://api.codetabs.com/v1/proxy/?quest=",
@@ -236,7 +236,22 @@ export function clearCreds() {
   }
 }
 
-// Try to reach live stream via proxy (as a URL) — for mixed-content workarounds
-export function proxied(url: string): string {
-  return CORS_PROXIES[0] + encodeURIComponent(url);
+export function isHttpsPage(): boolean {
+  return typeof window !== "undefined" && window.location.protocol === "https:";
+}
+
+export function shouldProxyUrl(url?: string | null): boolean {
+  return !!url && /^http:\/\//i.test(url) && isHttpsPage();
+}
+
+// Try to reach media through an HTTPS proxy. This is mandatory on GitHub Pages
+// when the IPTV provider only exposes HTTP stream URLs.
+export function proxied(url: string, proxyIndex = 0): string {
+  const proxy = CORS_PROXIES[proxyIndex] ?? CORS_PROXIES[0];
+  return proxy + encodeURIComponent(url);
+}
+
+export function mediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  return shouldProxyUrl(url) ? proxied(url) : url;
 }
