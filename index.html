@@ -67,19 +67,22 @@
       <div class="tools">
         <div class="proxy-row">
           <label for="proxySelect"><strong>Proxy CORS</strong></label>
-          <select id="proxySelect" style="max-width:300px;">
-            <option value="auto">Automático</option>
+          <select id="proxySelect" style="max-width:320px;">
+            <option value="auto">Automático (local → …)</option>
+            <option value="local">Local (127.0.0.1:8787) ★</option>
             <option value="none">Sem proxy</option>
-            <option value="corsproxy">corsproxy.io</option>
             <option value="allorigins">allorigins.win</option>
             <option value="codetabs">codetabs.com</option>
             <option value="corsproxyorg">corsproxy.org</option>
+            <option value="corsproxy">corsproxy.io</option>
           </select>
           <span class="badge" id="proxyBadge">Proxy: automático</span>
         </div>
         <div class="hint">
-          GitHub Pages (HTTPS) + streams HTTP precisam de proxy. O player tenta proxyar
-          o manifest HLS e os segmentos. Preferira listas <strong>Xtream</strong>.
+          <strong>Canais ao vivo:</strong> proxies públicos bloqueiam IPTV.
+          Rode na pasta do projeto: <code>node proxy-server.js</code>
+          e escolha <strong>Local (127.0.0.1:8787)</strong>.
+          O player reescreve manifests com caminhos <code>/hls/...</code>.
         </div>
       </div>
 

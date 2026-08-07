@@ -1,67 +1,58 @@
-# IPTV Player (M3U8 / Xtream) — GitHub Pages
+# IPTV Player (M3U8 / Xtream)
 
-Player web modular, compatível com **GitHub Pages** (HTTPS).
+Player web com API **Xtream** (Ao vivo / Filmes / Séries), categorias e proxy local para HLS.
 
-## Estrutura de arquivos
+## Por que o ao vivo falhava
 
-```
-iptv-player/
-├── index.html              # HTML principal
-├── css/
-│   └── style.css           # Estilos
-├── js/
-│   ├── config.js           # Lista padrão, proxies, constantes
-│   ├── storage.js          # Salvar / carregar / excluir cache
-│   ├── proxies.js          # Fetch com proxies CORS
-│   ├── playlist.js         # Parse M3U e carga de listas
-│   ├── player.js           # Reprodução HLS (hls.js)
-│   ├── ui.js               # Log, status, render de canais
-│   ├── add-list.js         # Modal: M3U, Xtream, Arquivo/Colar
-│   └── app.js              # Bootstrap e eventos
-└── README.md
+1. O servidor **não envia CORS** → o navegador bloqueia.
+2. Proxies públicos (**corsproxy.io**, etc.) **bloqueiam domínios IPTV** (403).
+3. O manifest HLS traz segmentos em `/hls/TOKEN` (path no host). Sem reescrita, o player quebra.
+
+## Solução: proxy local
+
+Na pasta do projeto:
+
+```bash
+node proxy-server.js
 ```
 
-Cada função importante fica em um arquivo. Ex.: erro de proxy → edite só `js/proxies.js`; limpar cache → `js/storage.js`.
+Sobe em `http://127.0.0.1:8787`.
 
-## Lista padrão
+No player, escolha **Proxy: Local (127.0.0.1:8787)** (ou Automático).
+
+Funciona com:
+- página aberta em `http://localhost...`
+- ou GitHub Pages (o proxy local ainda roda na sua máquina)
+
+## Estrutura
 
 ```
-http://srv.cldplay.in:80/get.php?username=lelezago&password=lelezago@2021&type=m3u_plus
+index.html
+proxy-server.js          ← proxy CORS local (Node)
+css/style.css
+js/
+  config.js              lista padrão + proxies
+  xtream.js              API Xtream
+  playlist.js            categorias / carga
+  player.js              HLS + reescrita de manifest
+  proxies.js
+  storage.js             limpar cache
+  add-list.js
+  ui.js
+  app.js
 ```
 
-Essa lista tem **dezenas de MB**. Proxies CORS públicos (allorigins, corsproxy, codetabs…) costumam:
+## Lista padrão (Xtream)
 
-- retornar **403**
-- falhar com **Failed to fetch**
-- cortar a resposta
+- DNS: `http://srv.cldplay.in:80`
+- Usuário / senha conforme `js/config.js`
 
-Por isso o player inclui a aba **Arquivo / Colar**.
+## Abas
 
-## Como usar no GitHub Pages
+- **Ao vivo** → categorias live da API
+- **Filmes** → VOD
+- **Séries** → lista → episódios
 
-1. Envie a pasta inteira para o repositório
-2. **Settings → Pages → Source**: branch `main`, pasta `/ (root)`
-3. Abra `https://SEU_USUARIO.github.io/NOME_DO_REPO/`
+## GitHub Pages
 
-### Fluxo recomendado (quando o proxy falha)
-
-1. No PC, baixe a playlist (navegador ou curl/VLC)
-2. No player: **Adicionar lista → Arquivo / Colar**
-3. Selecione o `.m3u` ou cole o texto
-4. **Salvar e carregar**
-
-## Funções
-
-| Recurso | Arquivo |
-|---------|---------|
-| Lista padrão | `js/config.js` |
-| Proxies CORS | `js/proxies.js` |
-| Excluir cache | `js/storage.js` |
-| Adicionar M3U / Xtream / arquivo | `js/add-list.js` |
-| Player de vídeo | `js/player.js` |
-
-## Observações
-
-- Dados ficam no `localStorage` do navegador (textos muito grandes não são persistidos).
-- Use apenas streams que você tem direito de acessar.
-- Proxies públicos são terceiros e instáveis para arquivos grandes.
+Envie a pasta (exceto `node_modules` se houver). O HTML/JS/CSS rodam no Pages; o **proxy local** continua necessário na sua máquina para streams ao vivo.

@@ -14,7 +14,6 @@ IPTV.proxies = {
   async fetchText(url, preferredMode) {
     const modes = this.modesFor(preferredMode);
     let lastError = null;
-
     for (const mode of modes) {
       try {
         const result = await this.fetchTextOnce(url, mode);
@@ -25,23 +24,26 @@ IPTV.proxies = {
         IPTV.ui.log(`Falha em ${mode}: ${err.message}`);
       }
     }
-
     throw lastError || new Error('Falha ao baixar recurso');
   },
 
+  /**
+   * @returns {{ text: string, mode: string, finalUrl: string }}
+   */
   async fetchTextOnce(url, mode) {
-    const finalUrl = this.build(url, mode);
-    IPTV.ui.log(`Tentando fetch (${mode}): ${finalUrl.slice(0, 140)}...`);
+    const finalUrlReq = this.build(url, mode);
+    IPTV.ui.log(`Tentando fetch (${mode}): ${finalUrlReq.slice(0, 140)}...`);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), IPTV.FETCH_TIMEOUT_MS);
 
-    const res = await fetch(finalUrl, {
+    const res = await fetch(finalUrlReq, {
       method: 'GET',
       signal: controller.signal,
       cache: 'no-store',
       mode: 'cors',
-      credentials: 'omit'
+      credentials: 'omit',
+      redirect: 'follow'
     });
     clearTimeout(timer);
 
@@ -62,13 +64,18 @@ IPTV.proxies = {
       throw new Error('Proxy retornou HTML, não dados');
     }
 
-    return { text, mode };
+    // URL final após redirects (essencial para /hls/... no host CDN)
+    // Proxy local envia X-Final-Url com o host real (CDN/token)
+    const headerFinal = res.headers.get('X-Final-Url') || res.headers.get('x-final-url');
+    const responseUrl = headerFinal || res.url || url;
+
+    return { text, mode, finalUrl: responseUrl };
   },
 
   async fetchJson(url, preferredMode) {
-    const { text, mode } = await this.fetchText(url, preferredMode);
+    const { text, mode, finalUrl } = await this.fetchText(url, preferredMode);
     try {
-      return { data: JSON.parse(text), mode };
+      return { data: JSON.parse(text), mode, finalUrl };
     } catch (e) {
       throw new Error('Resposta não é JSON válido');
     }

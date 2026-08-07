@@ -1,7 +1,5 @@
 /**
  * Cliente Xtream Codes (player_api.php)
- * Muito mais leve que baixar m3u_plus inteiro:
- * categorias → streams por categoria sob demanda.
  */
 window.IPTV = window.IPTV || {};
 
@@ -11,6 +9,11 @@ IPTV.xtream = {
     if (!host) return '';
     if (!/^https?:\/\//i.test(host)) host = 'http://' + host;
     return host;
+  },
+
+  /** Path segment: mantém @ e : comuns em senhas Xtream */
+  pathSeg(value) {
+    return encodeURIComponent(String(value)).replace(/%40/gi, '@').replace(/%3A/gi, ':');
   },
 
   apiUrl(pl, action, extra) {
@@ -34,18 +37,18 @@ IPTV.xtream = {
 
   streamUrl(pl, kind, streamId, extension) {
     const dns = this.normalizeDns(pl.dns);
-    const user = encodeURIComponent(pl.username);
-    const pass = encodeURIComponent(pl.password);
+    const user = this.pathSeg(pl.username);
+    const pass = this.pathSeg(pl.password);
     const id = encodeURIComponent(String(streamId));
     const ext = (extension || 'm3u8').replace(/^\./, '');
 
     if (kind === 'live') {
+      // Preferir m3u8; alguns painéis também servem .ts contínuo
       return `${dns}/live/${user}/${pass}/${id}.m3u8`;
     }
     if (kind === 'movie') {
       return `${dns}/movie/${user}/${pass}/${id}.${ext}`;
     }
-    // series episode
     return `${dns}/series/${user}/${pass}/${id}.${ext}`;
   },
 
@@ -56,7 +59,6 @@ IPTV.xtream = {
     return data;
   },
 
-  /** Login / info da conta */
   async auth(pl) {
     return this.request(pl, null);
   },
@@ -87,9 +89,7 @@ IPTV.xtream = {
         logo: s.stream_icon || '',
         group: s.category_name || '',
         container: (s.container_extension || 'mp4').replace(/^\./, ''),
-        kind: 'movie',
-        plot: s.plot || '',
-        rating: s.rating || ''
+        kind: 'movie'
       }));
     }
 
@@ -102,13 +102,10 @@ IPTV.xtream = {
         name: s.name || 'Série',
         logo: s.cover || s.stream_icon || '',
         group: s.category_name || '',
-        kind: 'series',
-        plot: s.plot || '',
-        rating: s.rating || ''
+        kind: 'series'
       }));
     }
 
-    // live
     const data = await this.request(pl, 'get_live_streams', {
       category_id: categoryId || undefined
     });
@@ -117,7 +114,6 @@ IPTV.xtream = {
       name: s.name || 'Canal',
       logo: s.stream_icon || '',
       group: s.category_name || '',
-      epgChannelId: s.epg_channel_id || '',
       kind: 'live'
     }));
   },
@@ -129,40 +125,28 @@ IPTV.xtream = {
     Object.keys(episodesMap)
       .sort((a, b) => Number(a) - Number(b))
       .forEach((season) => {
-        const list = episodesMap[season] || [];
-        list.forEach((ep) => {
+        (episodesMap[season] || []).forEach((ep) => {
           episodes.push({
             id: String(ep.id),
             name:
               `S${season}E${ep.episode_num || ''} — ` +
-              (ep.title || ep.container_extension || 'Episódio'),
+              (ep.title || 'Episódio'),
             logo: (data.info && data.info.cover) || '',
             group: `Temporada ${season}`,
             kind: 'episode',
             seriesId: String(seriesId),
             container: (ep.container_extension || 'mp4').replace(/^\./, ''),
-            season: String(season),
-            episodeNum: ep.episode_num
+            season: String(season)
           });
         });
       });
-    return {
-      info: data.info || {},
-      episodes
-    };
+    return { info: data.info || {}, episodes };
   },
 
-  /** Monta URL reproduzível a partir do item */
   toPlayableUrl(pl, item) {
-    if (item.kind === 'live') {
-      return this.streamUrl(pl, 'live', item.id, 'm3u8');
-    }
-    if (item.kind === 'movie') {
-      return this.streamUrl(pl, 'movie', item.id, item.container || 'mp4');
-    }
-    if (item.kind === 'episode') {
-      return this.streamUrl(pl, 'series', item.id, item.container || 'mp4');
-    }
+    if (item.kind === 'live') return this.streamUrl(pl, 'live', item.id, 'm3u8');
+    if (item.kind === 'movie') return this.streamUrl(pl, 'movie', item.id, item.container || 'mp4');
+    if (item.kind === 'episode') return this.streamUrl(pl, 'series', item.id, item.container || 'mp4');
     return item.url || '';
   }
 };

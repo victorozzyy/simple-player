@@ -1,0 +1,10 @@
+{
+  "name": "iptv-player",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IPTV web player + proxy CORS local",
+  "scripts": {
+    "proxy": "node proxy-server.js",
+    "start": "node proxy-server.js"
+  }
+}
