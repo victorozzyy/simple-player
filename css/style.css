@@ -335,3 +335,76 @@ video {
   line-height: 1.4;
   margin-bottom: 10px;
 }
+
+/* Type tabs: Ao vivo / Filmes / Séries */
+.type-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: #121722;
+  padding: 0 8px;
+}
+.type-tab {
+  flex: 1;
+  max-width: 200px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 12px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+}
+.type-tab:hover { color: var(--text); }
+.type-tab.active {
+  color: #93c5fd;
+  border-bottom-color: var(--accent);
+}
+.type-tab .count {
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+}
+.cat-btn {
+  border: 1px solid var(--border);
+  background: #121722;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-btn:hover { border-color: #3b4560; }
+.cat-btn.active {
+  background: #1d3a66;
+  border-color: #2b5ea8;
+  color: #dbeafe;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #94a3b8;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.layout { min-height: calc(100vh - 106px); }
+.sidebar { max-height: calc(100vh - 106px); }

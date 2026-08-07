@@ -8,35 +8,24 @@ IPTV.state = {
   filtered: [],
   currentChannel: null,
   proxyMode: 'auto',
+  contentType: 'live',
+  activeCategoryId: '__all__',
+  sourceMode: null,
+  xtreamCategories: { live: [], movie: [], series: [] },
+  xtreamPlaylist: null,
   hls: null,
+  blobUrl: null,
   _pendingHugeText: null
 };
 
 IPTV.els = {};
 
 function cacheEls() {
-  const ids = [
-    'playlistSelect',
-    'channelList',
-    'searchInput',
-    'video',
-    'overlayMsg',
-    'nowPlaying',
-    'nowMeta',
-    'statusBadge',
-    'proxySelect',
-    'proxyBadge',
-    'logBox',
-    'modalAdd',
-    'btnAddList',
-    'btnCancelAdd',
-    'btnSaveAdd',
-    'btnReload',
-    'btnClearCache'
-  ];
-  ids.forEach((id) => {
-    IPTV.els[id] = document.getElementById(id);
-  });
+  [
+    'playlistSelect','channelList','categoryList','searchInput','video','overlayMsg',
+    'nowPlaying','nowMeta','statusBadge','proxySelect','proxyBadge','logBox','modalAdd',
+    'btnAddList','btnCancelAdd','btnSaveAdd','btnReload','btnClearCache'
+  ].forEach((id) => { IPTV.els[id] = document.getElementById(id); });
 }
 
 function restoreFromStorage() {
@@ -45,7 +34,6 @@ function restoreFromStorage() {
     IPTV.state.playlists = [Object.assign({}, IPTV.DEFAULT_PLAYLIST)];
     return;
   }
-
   if (Array.isArray(data.playlists) && data.playlists.length) {
     const hasDefault = data.playlists.some((p) => p.id === 'default');
     IPTV.state.playlists = hasDefault
@@ -54,9 +42,13 @@ function restoreFromStorage() {
   } else {
     IPTV.state.playlists = [Object.assign({}, IPTV.DEFAULT_PLAYLIST)];
   }
-
+  IPTV.state.playlists = IPTV.state.playlists.map((p) => {
+    if (p.id === 'default' && !p.dns) return Object.assign({}, IPTV.DEFAULT_PLAYLIST);
+    return p;
+  });
   if (data.activePlaylistId) IPTV.state.activePlaylistId = data.activePlaylistId;
   if (data.proxyMode) IPTV.state.proxyMode = data.proxyMode;
+  if (data.contentType) IPTV.state.contentType = data.contentType;
 }
 
 function bindEvents() {
@@ -65,7 +57,8 @@ function bindEvents() {
     IPTV.storage.save({
       playlists: IPTV.state.playlists,
       activePlaylistId: IPTV.state.activePlaylistId,
-      proxyMode: IPTV.state.proxyMode
+      proxyMode: IPTV.state.proxyMode,
+      contentType: IPTV.state.contentType
     });
     IPTV.playlist.loadActive();
   });
@@ -78,7 +71,8 @@ function bindEvents() {
     IPTV.storage.save({
       playlists: IPTV.state.playlists,
       activePlaylistId: IPTV.state.activePlaylistId,
-      proxyMode: IPTV.state.proxyMode
+      proxyMode: IPTV.state.proxyMode,
+      contentType: IPTV.state.contentType
     });
     IPTV.ui.log('Modo de proxy alterado para: ' + IPTV.state.proxyMode);
   });
@@ -86,13 +80,21 @@ function bindEvents() {
   IPTV.els.btnReload.addEventListener('click', () => IPTV.playlist.loadActive());
 
   IPTV.els.btnClearCache.addEventListener('click', () => {
-    if (
-      confirm(
-        'Excluir todos os dados em cache (listas salvas, preferências)? A lista padrão será restaurada.'
-      )
-    ) {
+    if (confirm('Excluir todos os dados em cache? A lista padrão será restaurada.')) {
       IPTV.storage.clearAll();
     }
+  });
+
+  document.querySelectorAll('.type-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      IPTV.ui.setContentType(tab.dataset.type);
+      IPTV.storage.save({
+        playlists: IPTV.state.playlists,
+        activePlaylistId: IPTV.state.activePlaylistId,
+        proxyMode: IPTV.state.proxyMode,
+        contentType: IPTV.state.contentType
+      });
+    });
   });
 
   IPTV.addList.init();
@@ -101,13 +103,14 @@ function bindEvents() {
 document.addEventListener('DOMContentLoaded', () => {
   cacheEls();
   restoreFromStorage();
-
   IPTV.els.proxySelect.value = IPTV.state.proxyMode || 'auto';
   IPTV.ui.setProxyBadge(IPTV.els.proxySelect.value);
   IPTV.ui.renderPlaylistSelect();
+  document.querySelectorAll('.type-tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.type === IPTV.state.contentType);
+  });
   IPTV.ui.setStatus('Iniciando...', 'warn');
   IPTV.els.overlayMsg.classList.add('show');
-
   bindEvents();
   IPTV.playlist.loadActive();
 });
