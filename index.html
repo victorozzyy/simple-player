@@ -11,11 +11,17 @@
   <header>
     <h1>📺 IPTV Player · M3U8 / Xtream</h1>
     <div class="actions">
-      <button class="btn" id="btnReload">Recarregar lista</button>
+      <button class="btn" id="btnReload">Recarregar</button>
       <button class="btn" id="btnAddList">Adicionar lista</button>
-      <button class="btn danger" id="btnClearCache">Excluir dados em cache</button>
+      <button class="btn danger" id="btnClearCache">Excluir cache</button>
     </div>
   </header>
+
+  <div class="type-bar">
+    <button type="button" class="type-tab active" data-type="live">Ao vivo <span class="count">—</span></button>
+    <button type="button" class="type-tab" data-type="movie">Filmes <span class="count">—</span></button>
+    <button type="button" class="type-tab" data-type="series">Séries <span class="count">—</span></button>
+  </div>
 
   <div class="layout">
     <aside class="sidebar">
@@ -23,29 +29,36 @@
         <h2>Lista ativa</h2>
         <select id="playlistSelect"></select>
         <p class="hint">
-          Lista padrão pré-carregada. Em GitHub Pages (HTTPS), playlists HTTP grandes
-          costumam falhar nos proxies — use a aba <strong>Arquivo / Colar</strong>.
+          <strong>Xtream</strong> é mais leve: carrega categorias e itens sob demanda
+          (sem baixar 70MB de M3U).
         </p>
       </div>
 
+      <div class="sidebar-section">
+        <h2>Categorias / subcategorias</h2>
+        <div class="category-list" id="categoryList">
+          <span class="hint">Carregando categorias...</span>
+        </div>
+      </div>
+
       <div class="search-box">
-        <input id="searchInput" type="search" placeholder="Buscar canal ou categoria..." />
+        <input id="searchInput" type="search" placeholder="Buscar canal, filme ou série..." />
       </div>
 
       <div class="channel-list" id="channelList">
-        <div class="hint" style="padding:12px;">Carregando canais...</div>
+        <div class="hint" style="padding:12px;">Carregando...</div>
       </div>
     </aside>
 
     <main class="main">
       <div class="player-wrap">
         <video id="video" controls playsinline></video>
-        <div class="overlay-msg" id="overlayMsg">Selecione um canal para começar</div>
+        <div class="overlay-msg" id="overlayMsg">Selecione um item para começar</div>
       </div>
 
       <div class="info-bar">
         <div>
-          <div class="title" id="nowPlaying">Nenhum canal</div>
+          <div class="title" id="nowPlaying">Nenhum item</div>
           <div class="sub" id="nowMeta">Pronto</div>
         </div>
         <div class="status" id="statusBadge">Idle</div>
@@ -55,18 +68,18 @@
         <div class="proxy-row">
           <label for="proxySelect"><strong>Proxy CORS</strong></label>
           <select id="proxySelect" style="max-width:300px;">
-            <option value="auto">Automático (tenta vários)</option>
-            <option value="none">Sem proxy (direto)</option>
-            <option value="allorigins">api.allorigins.win</option>
+            <option value="auto">Automático</option>
+            <option value="none">Sem proxy</option>
             <option value="corsproxy">corsproxy.io</option>
-            <option value="codetabs">api.codetabs.com</option>
+            <option value="allorigins">allorigins.win</option>
+            <option value="codetabs">codetabs.com</option>
             <option value="corsproxyorg">corsproxy.org</option>
           </select>
           <span class="badge" id="proxyBadge">Proxy: automático</span>
         </div>
         <div class="hint">
-          Compatível com GitHub Pages. Se todos os proxies falharem (403 / Failed to fetch),
-          importe o arquivo .m3u manualmente — a lista padrão tem dezenas de MB e proxies públicos cortam ou bloqueiam.
+          GitHub Pages (HTTPS) + streams HTTP precisam de proxy. O player tenta proxyar
+          o manifest HLS e os segmentos. Preferira listas <strong>Xtream</strong>.
         </div>
       </div>
 
@@ -74,38 +87,26 @@
     </main>
   </div>
 
-  <!-- Modal adicionar lista -->
   <div class="modal-backdrop" id="modalAdd">
     <div class="modal">
       <h3>Adicionar lista</h3>
       <div class="tabs">
-        <div class="tab active" data-tab="m3u">M3U / URL</div>
-        <div class="tab" data-tab="xtream">Xtream Codes</div>
+        <div class="tab active" data-tab="xtream">Xtream Codes</div>
+        <div class="tab" data-tab="m3u">M3U / URL</div>
         <div class="tab" data-tab="file">Arquivo / Colar</div>
       </div>
 
-      <div id="tabM3u">
+      <div id="tabXtream">
         <div class="alert">
-          Em páginas HTTPS, URLs HTTP e proxies públicos frequentemente falham.
-          Prefira <strong>Arquivo / Colar</strong> para listas grandes.
+          Recomendado: a API Xtream carrega só categorias e a categoria escolhida
+          (muito mais leve que o arquivo M3U completo).
         </div>
         <div class="row">
-          <label>Nome da lista</label>
-          <input id="m3uName" placeholder="Minha lista M3U" />
-        </div>
-        <div class="row">
-          <label>URL da playlist (.m3u / .m3u8 / m3u_plus)</label>
-          <input id="m3uUrl" placeholder="https://servidor/get.php?username=...&type=m3u_plus" />
-        </div>
-      </div>
-
-      <div id="tabXtream" class="hidden">
-        <div class="row">
-          <label>Nome da lista</label>
+          <label>Nome</label>
           <input id="xtName" placeholder="Minha lista Xtream" />
         </div>
         <div class="row">
-          <label>DNS / Host (ex: http://srv.exemplo.com:8080)</label>
+          <label>DNS / Host</label>
           <input id="xtDns" placeholder="http://servidor:porta" />
         </div>
         <div class="row two">
@@ -118,25 +119,32 @@
             <input id="xtPass" type="password" placeholder="password" />
           </div>
         </div>
-        <p class="hint">Será gerada: DNS/get.php?username=USER&password=PASS&type=m3u_plus</p>
+      </div>
+
+      <div id="tabM3u" class="hidden">
+        <div class="row">
+          <label>Nome</label>
+          <input id="m3uName" placeholder="Minha lista M3U" />
+        </div>
+        <div class="row">
+          <label>URL (.m3u / m3u_plus)</label>
+          <input id="m3uUrl" placeholder="https://..." />
+        </div>
       </div>
 
       <div id="tabFile" class="hidden">
-        <div class="alert">
-          Melhor opção no GitHub Pages: baixe o .m3u no computador e selecione aqui
-          (ou cole o texto). Não depende de proxy CORS.
+        <div class="alert">Use se a API/proxies falharem. Listas grandes ficam só na sessão.</div>
+        <div class="row">
+          <label>Nome</label>
+          <input id="fileName" placeholder="Lista local" />
         </div>
         <div class="row">
-          <label>Nome da lista</label>
-          <input id="fileName" placeholder="Minha lista local" />
-        </div>
-        <div class="row">
-          <label>Arquivo .m3u / .m3u8</label>
+          <label>Arquivo</label>
           <input id="fileInput" type="file" accept=".m3u,.m3u8,.txt,text/plain" />
         </div>
         <div class="row">
-          <label>Ou cole o conteúdo M3U</label>
-          <textarea id="fileText" placeholder="#EXTM3U&#10;#EXTINF:-1,Canal&#10;http://..."></textarea>
+          <label>Ou cole o M3U</label>
+          <textarea id="fileText" placeholder="#EXTM3U"></textarea>
         </div>
       </div>
 
@@ -147,11 +155,11 @@
     </div>
   </div>
 
-  <!-- Ordem: config → módulos → app -->
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/proxies.js"></script>
+  <script src="js/xtream.js"></script>
   <script src="js/playlist.js"></script>
   <script src="js/player.js"></script>
   <script src="js/add-list.js"></script>
