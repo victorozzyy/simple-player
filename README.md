@@ -1,13 +1,27 @@
 # IPTV Player (M3U8 / Xtream) — GitHub Pages
 
-Player web de IPTV compatível com **GitHub Pages** (HTTPS), com:
+Player web modular, compatível com **GitHub Pages** (HTTPS).
 
-- Lista padrão pré-configurada
-- Adicionar lista **M3U/M3U8** por URL
-- Adicionar lista **Xtream Codes** (DNS + usuário + senha)
-- Player HLS (hls.js) no navegador
-- Proxies CORS para contornar bloqueios HTTP/CORS em Pages
-- Botão **Excluir dados em cache** (localStorage + Cache API)
+## Estrutura de arquivos
+
+```
+iptv-player/
+├── index.html              # HTML principal
+├── css/
+│   └── style.css           # Estilos
+├── js/
+│   ├── config.js           # Lista padrão, proxies, constantes
+│   ├── storage.js          # Salvar / carregar / excluir cache
+│   ├── proxies.js          # Fetch com proxies CORS
+│   ├── playlist.js         # Parse M3U e carga de listas
+│   ├── player.js           # Reprodução HLS (hls.js)
+│   ├── ui.js               # Log, status, render de canais
+│   ├── add-list.js         # Modal: M3U, Xtream, Arquivo/Colar
+│   └── app.js              # Bootstrap e eventos
+└── README.md
+```
+
+Cada função importante fica em um arquivo. Ex.: erro de proxy → edite só `js/proxies.js`; limpar cache → `js/storage.js`.
 
 ## Lista padrão
 
@@ -15,33 +29,39 @@ Player web de IPTV compatível com **GitHub Pages** (HTTPS), com:
 http://srv.cldplay.in:80/get.php?username=lelezago&password=lelezago@2021&type=m3u_plus
 ```
 
-## Como publicar no GitHub Pages
+Essa lista tem **dezenas de MB**. Proxies CORS públicos (allorigins, corsproxy, codetabs…) costumam:
 
-1. Crie um repositório (ex: `iptv-player`)
-2. Envie o arquivo `index.html` (e este README se quiser)
-3. Em **Settings → Pages → Source**: branch `main` / pasta `/ (root)`
-4. Acesse `https://SEU_USUARIO.github.io/iptv-player/`
+- retornar **403**
+- falhar com **Failed to fetch**
+- cortar a resposta
 
-## CORS / erros comuns
+Por isso o player inclui a aba **Arquivo / Colar**.
 
-Erros como:
+## Como usar no GitHub Pages
 
-- `Access to fetch ... has been blocked by CORS policy`
-- `Failed to load resource: 404` em proxies (`api.allorigins.win`, etc.)
-- `net::ERR_FAILED` em hosts HTTP mistos
+1. Envie a pasta inteira para o repositório
+2. **Settings → Pages → Source**: branch `main`, pasta `/ (root)`
+3. Abra `https://SEU_USUARIO.github.io/NOME_DO_REPO/`
 
-São esperados em alguns servidores IPTV. Use o seletor **Proxy CORS**:
+### Fluxo recomendado (quando o proxy falha)
 
-| Opção | Uso |
-|--------|-----|
-| Automático | Tenta direto → allorigins → corsproxy → codetabs |
-| Sem proxy | Requisição direta (melhor quando o servidor libera CORS) |
-| allorigins / corsproxy / codetabs | Força proxy público |
+1. No PC, baixe a playlist (navegador ou curl/VLC)
+2. No player: **Adicionar lista → Arquivo / Colar**
+3. Selecione o `.m3u` ou cole o texto
+4. **Salvar e carregar**
 
-Se um proxy retornar 404, o modo **Automático** tenta o próximo.
+## Funções
+
+| Recurso | Arquivo |
+|---------|---------|
+| Lista padrão | `js/config.js` |
+| Proxies CORS | `js/proxies.js` |
+| Excluir cache | `js/storage.js` |
+| Adicionar M3U / Xtream / arquivo | `js/add-list.js` |
+| Player de vídeo | `js/player.js` |
 
 ## Observações
 
-- Credenciais e listas ficam apenas no **localStorage** do seu navegador.
-- Use apenas listas e streams que você tem direito de acessar.
-- Proxies públicos são terceiros; disponibilidade pode variar.
+- Dados ficam no `localStorage` do navegador (textos muito grandes não são persistidos).
+- Use apenas streams que você tem direito de acessar.
+- Proxies públicos são terceiros e instáveis para arquivos grandes.

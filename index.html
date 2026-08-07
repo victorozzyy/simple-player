@@ -4,299 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IPTV Player - M3U8 / Xtream</title>
+  <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f1115;
-      --panel: #171a21;
-      --panel2: #1e2330;
-      --border: #2a3142;
-      --text: #e8ecf4;
-      --muted: #9aa3b5;
-      --accent: #3b82f6;
-      --accent2: #22c55e;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, #141821, #10131a);
-      position: sticky;
-      top: 0;
-      z-index: 20;
-    }
-    header h1 {
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: 0.2px;
-    }
-    header .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn {
-      border: 1px solid var(--border);
-      background: var(--panel2);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: 0.15s ease;
-      white-space: nowrap;
-    }
-    .btn:hover { border-color: #3b4560; background: #242a3a; }
-    .btn.primary { background: var(--accent); border-color: #2563eb; }
-    .btn.primary:hover { background: #2563eb; }
-    .btn.success { background: #15803d; border-color: #16a34a; }
-    .btn.danger { background: #7f1d1d; border-color: #b91c1c; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      min-height: calc(100vh - 58px);
-    }
-    @media (max-width: 980px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-
-    .sidebar {
-      border-right: 1px solid var(--border);
-      background: var(--panel);
-      display: flex;
-      flex-direction: column;
-      max-height: calc(100vh - 58px);
-    }
-    .sidebar-section {
-      padding: 14px;
-      border-bottom: 1px solid var(--border);
-    }
-    .sidebar-section h2 {
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-    label {
-      display: block;
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    input, select, textarea {
-      width: 100%;
-      background: #0d1017;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 9px 11px;
-      font-size: 0.9rem;
-      outline: none;
-    }
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--accent);
-    }
-    .row { display: grid; gap: 8px; margin-bottom: 8px; }
-    .row.two { grid-template-columns: 1fr 1fr; }
-    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; line-height: 1.35; }
-
-    .search-box { padding: 12px 14px; border-bottom: 1px solid var(--border); }
-    .channel-list {
-      flex: 1;
-      overflow: auto;
-      padding: 8px;
-    }
-    .channel {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border-radius: 12px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      margin-bottom: 6px;
-      background: transparent;
-    }
-    .channel:hover { background: #1a2030; }
-    .channel.active {
-      background: #17233a;
-      border-color: #2b4b7c;
-    }
-    .channel img {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      object-fit: contain;
-      background: #0b0e14;
-      flex-shrink: 0;
-    }
-    .channel .meta { min-width: 0; }
-    .channel .name {
-      font-size: 0.9rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .channel .group {
-      font-size: 0.72rem;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .main {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .player-wrap {
-      background: #000;
-      aspect-ratio: 16 / 9;
-      max-height: 62vh;
-      position: relative;
-    }
-    video {
-      width: 100%;
-      height: 100%;
-      background: #000;
-      outline: none;
-    }
-    .overlay-msg {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 20px;
-      background: rgba(0,0,0,0.55);
-      color: #fff;
-      font-size: 0.95rem;
-    }
-    .overlay-msg.show { display: flex; }
-
-    .info-bar {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel);
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .info-bar .title {
-      font-weight: 700;
-      font-size: 1rem;
-    }
-    .info-bar .sub {
-      color: var(--muted);
-      font-size: 0.8rem;
-      margin-top: 2px;
-    }
-    .status {
-      font-size: 0.8rem;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #121722;
-    }
-    .status.ok { color: #86efac; border-color: #166534; }
-    .status.warn { color: #fde68a; border-color: #854d0e; }
-    .status.err { color: #fca5a5; border-color: #7f1d1d; }
-
-    .tools {
-      padding: 14px 16px;
-      display: grid;
-      gap: 10px;
-    }
-    .proxy-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    .proxy-row label { margin: 0; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-    .log {
-      margin: 0 16px 16px;
-      background: #0b0e14;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      max-height: 140px;
-      overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.75rem;
-      color: #b7c0d1;
-      white-space: pre-wrap;
-    }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-      padding: 16px;
-    }
-    .modal-backdrop.show { display: flex; }
-    .modal {
-      width: min(520px, 100%);
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 18px;
-    }
-    .modal h3 { margin-bottom: 12px; font-size: 1.05rem; }
-    .modal .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 14px;
-    }
-    .tabs {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 8px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #121722;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-    .tab.active {
-      background: #1d3a66;
-      border-color: #2b5ea8;
-    }
-    .hidden { display: none !important; }
-  </style>
 </head>
 <body>
   <header>
@@ -313,7 +22,10 @@
       <div class="sidebar-section">
         <h2>Lista ativa</h2>
         <select id="playlistSelect"></select>
-        <p class="hint">Lista padrão pré-carregada. Você pode adicionar M3U/M3U8 ou Xtream Codes (DNS + usuário + senha).</p>
+        <p class="hint">
+          Lista padrão pré-carregada. Em GitHub Pages (HTTPS), playlists HTTP grandes
+          costumam falhar nos proxies — use a aba <strong>Arquivo / Colar</strong>.
+        </p>
       </div>
 
       <div class="search-box">
@@ -342,18 +54,19 @@
       <div class="tools">
         <div class="proxy-row">
           <label for="proxySelect"><strong>Proxy CORS</strong></label>
-          <select id="proxySelect" style="max-width:280px;">
+          <select id="proxySelect" style="max-width:300px;">
             <option value="auto">Automático (tenta vários)</option>
             <option value="none">Sem proxy (direto)</option>
             <option value="allorigins">api.allorigins.win</option>
             <option value="corsproxy">corsproxy.io</option>
             <option value="codetabs">api.codetabs.com</option>
+            <option value="corsproxyorg">corsproxy.org</option>
           </select>
           <span class="badge" id="proxyBadge">Proxy: automático</span>
         </div>
         <div class="hint">
-          Compatível com GitHub Pages (HTTPS). Streams HTTP ou bloqueados por CORS usam proxies públicos.
-          Se um proxy falhar (404 / CORS), o player tenta o próximo automaticamente.
+          Compatível com GitHub Pages. Se todos os proxies falharem (403 / Failed to fetch),
+          importe o arquivo .m3u manualmente — a lista padrão tem dezenas de MB e proxies públicos cortam ou bloqueiam.
         </div>
       </div>
 
@@ -368,9 +81,14 @@
       <div class="tabs">
         <div class="tab active" data-tab="m3u">M3U / URL</div>
         <div class="tab" data-tab="xtream">Xtream Codes</div>
+        <div class="tab" data-tab="file">Arquivo / Colar</div>
       </div>
 
       <div id="tabM3u">
+        <div class="alert">
+          Em páginas HTTPS, URLs HTTP e proxies públicos frequentemente falham.
+          Prefira <strong>Arquivo / Colar</strong> para listas grandes.
+        </div>
         <div class="row">
           <label>Nome da lista</label>
           <input id="m3uName" placeholder="Minha lista M3U" />
@@ -400,7 +118,26 @@
             <input id="xtPass" type="password" placeholder="password" />
           </div>
         </div>
-        <p class="hint">Será gerada a URL: DNS/get.php?username=USER&password=PASS&type=m3u_plus</p>
+        <p class="hint">Será gerada: DNS/get.php?username=USER&password=PASS&type=m3u_plus</p>
+      </div>
+
+      <div id="tabFile" class="hidden">
+        <div class="alert">
+          Melhor opção no GitHub Pages: baixe o .m3u no computador e selecione aqui
+          (ou cole o texto). Não depende de proxy CORS.
+        </div>
+        <div class="row">
+          <label>Nome da lista</label>
+          <input id="fileName" placeholder="Minha lista local" />
+        </div>
+        <div class="row">
+          <label>Arquivo .m3u / .m3u8</label>
+          <input id="fileInput" type="file" accept=".m3u,.m3u8,.txt,text/plain" />
+        </div>
+        <div class="row">
+          <label>Ou cole o conteúdo M3U</label>
+          <textarea id="fileText" placeholder="#EXTM3U&#10;#EXTINF:-1,Canal&#10;http://..."></textarea>
+        </div>
       </div>
 
       <div class="actions">
@@ -410,493 +147,14 @@
     </div>
   </div>
 
-  <script>
-    const DEFAULT_PLAYLIST = {
-      id: 'default',
-      name: 'Lista padrão (cldplay)',
-      type: 'm3u',
-      url: 'http://srv.cldplay.in:80/get.php?username=lelezago&password=lelezago@2021&type=m3u_plus'
-    };
-
-    const PROXY_BUILDERS = {
-      none: (url) => url,
-      allorigins: (url) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-      corsproxy: (url) => 'https://corsproxy.io/?' + encodeURIComponent(url),
-      codetabs: (url) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
-    };
-
-    const AUTO_ORDER = ['none', 'allorigins', 'corsproxy', 'codetabs'];
-
-    const STORAGE_KEY = 'iptv_player_v1';
-
-    const el = {
-      playlistSelect: document.getElementById('playlistSelect'),
-      channelList: document.getElementById('channelList'),
-      searchInput: document.getElementById('searchInput'),
-      video: document.getElementById('video'),
-      overlayMsg: document.getElementById('overlayMsg'),
-      nowPlaying: document.getElementById('nowPlaying'),
-      nowMeta: document.getElementById('nowMeta'),
-      statusBadge: document.getElementById('statusBadge'),
-      proxySelect: document.getElementById('proxySelect'),
-      proxyBadge: document.getElementById('proxyBadge'),
-      logBox: document.getElementById('logBox'),
-      modalAdd: document.getElementById('modalAdd'),
-      btnAddList: document.getElementById('btnAddList'),
-      btnCancelAdd: document.getElementById('btnCancelAdd'),
-      btnSaveAdd: document.getElementById('btnSaveAdd'),
-      btnReload: document.getElementById('btnReload'),
-      btnClearCache: document.getElementById('btnClearCache')
-    };
-
-    let state = {
-      playlists: [DEFAULT_PLAYLIST],
-      activePlaylistId: 'default',
-      channels: [],
-      filtered: [],
-      currentChannel: null,
-      proxyMode: 'auto',
-      hls: null
-    };
-
-    function log(msg) {
-      const t = new Date().toLocaleTimeString();
-      el.logBox.textContent = `[${t}] ${msg}\n` + el.logBox.textContent.slice(0, 4000);
-    }
-
-    function setStatus(text, type = '') {
-      el.statusBadge.textContent = text;
-      el.statusBadge.className = 'status' + (type ? ' ' + type : '');
-    }
-
-    function saveState() {
-      const data = {
-        playlists: state.playlists,
-        activePlaylistId: state.activePlaylistId,
-        proxyMode: state.proxyMode
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.playlists) && data.playlists.length) {
-          // Garante lista padrão
-          const hasDefault = data.playlists.some(p => p.id === 'default');
-          state.playlists = hasDefault ? data.playlists : [DEFAULT_PLAYLIST, ...data.playlists];
-        }
-        if (data.activePlaylistId) state.activePlaylistId = data.activePlaylistId;
-        if (data.proxyMode) state.proxyMode = data.proxyMode;
-      } catch (e) {
-        log('Falha ao ler cache: ' + e.message);
-      }
-    }
-
-    function clearCache() {
-      localStorage.removeItem(STORAGE_KEY);
-      // Limpa também caches do browser relacionados se possível
-      if ('caches' in window) {
-        caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
-      }
-      state.playlists = [DEFAULT_PLAYLIST];
-      state.activePlaylistId = 'default';
-      state.proxyMode = 'auto';
-      state.channels = [];
-      state.filtered = [];
-      state.currentChannel = null;
-      stopPlayback();
-      el.proxySelect.value = 'auto';
-      el.proxyBadge.textContent = 'Proxy: automático';
-      renderPlaylistSelect();
-      el.channelList.innerHTML = '<div class="hint" style="padding:12px;">Cache limpo. Recarregue a lista.</div>';
-      el.nowPlaying.textContent = 'Nenhum canal';
-      el.nowMeta.textContent = 'Cache excluído';
-      setStatus('Cache limpo', 'warn');
-      log('Dados em cache excluídos (localStorage + Cache API).');
-      loadActivePlaylist();
-    }
-
-    function renderPlaylistSelect() {
-      el.playlistSelect.innerHTML = '';
-      state.playlists.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name + (p.id === 'default' ? ' ★' : '');
-        if (p.id === state.activePlaylistId) opt.selected = true;
-        el.playlistSelect.appendChild(opt);
-      });
-    }
-
-    function parseM3U(text) {
-      const lines = text.split(/\r?\n/);
-      const channels = [];
-      let current = null;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        if (line.startsWith('#EXTINF:')) {
-          current = { name: 'Canal', group: 'Geral', logo: '', url: '' };
-          const nameMatch = line.match(/,(.+)$/);
-          if (nameMatch) current.name = nameMatch[1].trim();
-
-          const groupMatch = line.match(/group-title="([^"]*)"/i);
-          if (groupMatch) current.group = groupMatch[1] || 'Geral';
-
-          const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
-          if (logoMatch) current.logo = logoMatch[1];
-        } else if (line.startsWith('#')) {
-          continue;
-        } else if (current) {
-          current.url = line;
-          channels.push(current);
-          current = null;
-        }
-      }
-      return channels;
-    }
-
-    async function fetchWithProxy(url, preferredMode) {
-      const modes = preferredMode === 'auto' ? AUTO_ORDER : [preferredMode];
-      let lastError = null;
-
-      for (const mode of modes) {
-        const builder = PROXY_BUILDERS[mode] || PROXY_BUILDERS.none;
-        const finalUrl = builder(url);
-        try {
-          log(`Tentando fetch (${mode}): ${finalUrl.slice(0, 120)}...`);
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 20000);
-          const res = await fetch(finalUrl, {
-            method: 'GET',
-            signal: controller.signal,
-            cache: 'no-store',
-            mode: 'cors'
-          });
-          clearTimeout(timer);
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-          const text = await res.text();
-          if (!text || text.length < 10) throw new Error('Resposta vazia');
-          // Heurística: playlist deve conter EXTINF ou EXT-X
-          if (!/#EXT/i.test(text) && modes.length > 1) {
-            // Pode ser JSON wrapper em alguns proxies — tenta extrair
-            try {
-              const j = JSON.parse(text);
-              if (j.contents) return { text: j.contents, mode };
-            } catch (_) {}
-          }
-          el.proxyBadge.textContent = 'Proxy: ' + mode;
-          return { text, mode };
-        } catch (err) {
-          lastError = err;
-          log(`Falha em ${mode}: ${err.message}`);
-        }
-      }
-      throw lastError || new Error('Falha ao baixar playlist');
-    }
-
-    async function loadActivePlaylist() {
-      const pl = state.playlists.find(p => p.id === state.activePlaylistId) || state.playlists[0];
-      if (!pl) return;
-
-      el.channelList.innerHTML = '<div class="hint" style="padding:12px;">Carregando playlist...</div>';
-      setStatus('Carregando...', 'warn');
-      log('Carregando lista: ' + pl.name + ' → ' + pl.url);
-
-      try {
-        const { text, mode } = await fetchWithProxy(pl.url, state.proxyMode);
-        const channels = parseM3U(text);
-        state.channels = channels;
-        applyFilter();
-        setStatus(`${channels.length} canais`, 'ok');
-        log(`Playlist carregada via ${mode}: ${channels.length} canais.`);
-        if (!channels.length) {
-          el.channelList.innerHTML = '<div class="hint" style="padding:12px;">Nenhum canal encontrado na playlist.</div>';
-        }
-      } catch (err) {
-        setStatus('Erro ao carregar', 'err');
-        el.channelList.innerHTML = `<div class="hint" style="padding:12px;color:#fca5a5;">Erro: ${err.message}<br><br>Dica: troque o Proxy CORS ou verifique usuário/senha/DNS.</div>`;
-        log('Erro ao carregar playlist: ' + err.message);
-      }
-    }
-
-    function applyFilter() {
-      const q = (el.searchInput.value || '').toLowerCase().trim();
-      state.filtered = !q
-        ? state.channels
-        : state.channels.filter(c =>
-            (c.name || '').toLowerCase().includes(q) ||
-            (c.group || '').toLowerCase().includes(q)
-          );
-      renderChannels();
-    }
-
-    function renderChannels() {
-      const list = state.filtered;
-      if (!list.length) {
-        el.channelList.innerHTML = '<div class="hint" style="padding:12px;">Nenhum canal corresponde à busca.</div>';
-        return;
-      }
-
-      const frag = document.createDocumentFragment();
-      // Limita render inicial para performance
-      const max = Math.min(list.length, 500);
-      for (let i = 0; i < max; i++) {
-        const c = list[i];
-        const div = document.createElement('div');
-        div.className = 'channel' + (state.currentChannel && state.currentChannel.url === c.url ? ' active' : '');
-        div.innerHTML = `
-          <img src="${c.logo || ''}" alt="" onerror="this.style.visibility='hidden'" />
-          <div class="meta">
-            <div class="name">${escapeHtml(c.name)}</div>
-            <div class="group">${escapeHtml(c.group || 'Geral')}</div>
-          </div>
-        `;
-        div.addEventListener('click', () => playChannel(c));
-        frag.appendChild(div);
-      }
-      if (list.length > max) {
-        const more = document.createElement('div');
-        more.className = 'hint';
-        more.style.padding = '10px';
-        more.textContent = `Mostrando ${max} de ${list.length}. Use a busca para filtrar.`;
-        frag.appendChild(more);
-      }
-      el.channelList.innerHTML = '';
-      el.channelList.appendChild(frag);
-    }
-
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function stopPlayback() {
-      if (state.hls) {
-        try { state.hls.destroy(); } catch (_) {}
-        state.hls = null;
-      }
-      try {
-        el.video.pause();
-        el.video.removeAttribute('src');
-        el.video.load();
-      } catch (_) {}
-    }
-
-    function buildStreamCandidates(url) {
-      if (state.proxyMode !== 'auto') {
-        return [{ mode: state.proxyMode, url: PROXY_BUILDERS[state.proxyMode](url) }];
-      }
-      // Para streams, preferimos direto primeiro (melhor latência). Proxies só se falhar.
-      return AUTO_ORDER.map(mode => ({ mode, url: PROXY_BUILDERS[mode](url) }));
-    }
-
-    async function playChannel(channel) {
-      state.currentChannel = channel;
-      renderChannels();
-      el.nowPlaying.textContent = channel.name;
-      el.nowMeta.textContent = (channel.group || 'Geral') + ' · ' + channel.url.slice(0, 80);
-      el.overlayMsg.classList.remove('show');
-      setStatus('Conectando...', 'warn');
-      log('Reproduzindo: ' + channel.name);
-
-      stopPlayback();
-
-      const candidates = buildStreamCandidates(channel.url);
-      let played = false;
-      let lastErr = null;
-
-      for (const cand of candidates) {
-        try {
-          await tryPlayUrl(cand.url, cand.mode);
-          played = true;
-          el.proxyBadge.textContent = 'Proxy: ' + cand.mode;
-          setStatus('Reproduzindo', 'ok');
-          log('Stream OK via ' + cand.mode);
-          break;
-        } catch (err) {
-          lastErr = err;
-          log('Falha stream (' + cand.mode + '): ' + err.message);
-        }
-      }
-
-      if (!played) {
-        setStatus('Falha no stream', 'err');
-        el.overlayMsg.textContent = 'Não foi possível reproduzir este canal.\n' + (lastErr ? lastErr.message : '');
-        el.overlayMsg.classList.add('show');
-      }
-    }
-
-    function tryPlayUrl(url, mode) {
-      return new Promise((resolve, reject) => {
-        // Safari nativo
-        if (el.video.canPlayType('application/vnd.apple.mpegurl') && mode === 'none') {
-          el.video.src = url;
-          const onErr = () => {
-            cleanup();
-            reject(new Error('Erro nativo de mídia'));
-          };
-          const onOk = () => {
-            cleanup();
-            el.video.play().then(resolve).catch(err => reject(err));
-          };
-          const cleanup = () => {
-            el.video.removeEventListener('loadedmetadata', onOk);
-            el.video.removeEventListener('error', onErr);
-          };
-          el.video.addEventListener('loadedmetadata', onOk);
-          el.video.addEventListener('error', onErr);
-          return;
-        }
-
-        if (!window.Hls || !Hls.isSupported()) {
-          // fallback
-          el.video.src = url;
-          el.video.play().then(resolve).catch(reject);
-          return;
-        }
-
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false,
-          xhrSetup: function (xhr) {
-            // Alguns proxies precisam de withCredentials=false
-            try { xhr.withCredentials = false; } catch (_) {}
-          }
-        });
-        state.hls = hls;
-
-        let settled = false;
-        const timer = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            try { hls.destroy(); } catch (_) {}
-            reject(new Error('Timeout ao carregar stream'));
-          }
-        }, 18000);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          el.video.play().then(resolve).catch(err => {
-            reject(err);
-          });
-        });
-
-        hls.on(Hls.Events.ERROR, (_, data) => {
-          if (data.fatal && !settled) {
-            settled = true;
-            clearTimeout(timer);
-            try { hls.destroy(); } catch (_) {}
-            reject(new Error(data.type + ': ' + (data.details || 'fatal')));
-          }
-        });
-
-        hls.loadSource(url);
-        hls.attachMedia(el.video);
-      });
-    }
-
-    // Modal tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        const which = tab.dataset.tab;
-        document.getElementById('tabM3u').classList.toggle('hidden', which !== 'm3u');
-        document.getElementById('tabXtream').classList.toggle('hidden', which !== 'xtream');
-      });
-    });
-
-    el.btnAddList.addEventListener('click', () => {
-      el.modalAdd.classList.add('show');
-    });
-    el.btnCancelAdd.addEventListener('click', () => {
-      el.modalAdd.classList.remove('show');
-    });
-    el.modalAdd.addEventListener('click', (e) => {
-      if (e.target === el.modalAdd) el.modalAdd.classList.remove('show');
-    });
-
-    el.btnSaveAdd.addEventListener('click', () => {
-      const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'm3u';
-      let name, url;
-
-      if (activeTab === 'xtream') {
-        name = (document.getElementById('xtName').value || 'Xtream').trim();
-        let dns = (document.getElementById('xtDns').value || '').trim().replace(/\/$/, '');
-        const user = (document.getElementById('xtUser').value || '').trim();
-        const pass = (document.getElementById('xtPass').value || '').trim();
-        if (!dns || !user || !pass) {
-          alert('Preencha DNS, usuário e senha.');
-          return;
-        }
-        if (!/^https?:\/\//i.test(dns)) dns = 'http://' + dns;
-        url = `${dns}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u_plus`;
-      } else {
-        name = (document.getElementById('m3uName').value || 'Lista M3U').trim();
-        url = (document.getElementById('m3uUrl').value || '').trim();
-        if (!url) {
-          alert('Informe a URL da playlist.');
-          return;
-        }
-      }
-
-      const id = 'pl_' + Date.now();
-      state.playlists.push({ id, name, type: activeTab, url });
-      state.activePlaylistId = id;
-      saveState();
-      renderPlaylistSelect();
-      el.modalAdd.classList.remove('show');
-      // limpa campos
-      ['m3uName','m3uUrl','xtName','xtDns','xtUser','xtPass'].forEach(id => {
-        const n = document.getElementById(id);
-        if (n) n.value = '';
-      });
-      loadActivePlaylist();
-    });
-
-    el.playlistSelect.addEventListener('change', () => {
-      state.activePlaylistId = el.playlistSelect.value;
-      saveState();
-      loadActivePlaylist();
-    });
-
-    el.searchInput.addEventListener('input', applyFilter);
-
-    el.proxySelect.addEventListener('change', () => {
-      state.proxyMode = el.proxySelect.value;
-      el.proxyBadge.textContent = 'Proxy: ' + state.proxyMode;
-      saveState();
-      log('Modo de proxy alterado para: ' + state.proxyMode);
-    });
-
-    el.btnReload.addEventListener('click', () => loadActivePlaylist());
-    el.btnClearCache.addEventListener('click', () => {
-      if (confirm('Excluir todos os dados em cache (listas salvas, preferências)? A lista padrão será restaurada.')) {
-        clearCache();
-      }
-    });
-
-    // Boot
-    loadState();
-    el.proxySelect.value = state.proxyMode || 'auto';
-    el.proxyBadge.textContent = 'Proxy: ' + el.proxySelect.value;
-    renderPlaylistSelect();
-    setStatus('Iniciando...', 'warn');
-    el.overlayMsg.classList.add('show');
-    loadActivePlaylist();
-  </script>
+  <!-- Ordem: config → módulos → app -->
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/proxies.js"></script>
+  <script src="js/playlist.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/add-list.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
