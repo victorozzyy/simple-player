@@ -16,7 +16,7 @@ export default function Player({ url, title, subtitle, poster, isLive, onClose }
   const hlsRef = useRef<Hls | null>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
-  const [useProxy, setUseProxy] = useState(false);
+  const [useProxy] = useState(true);
   const [muted, setMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const hideTimer = useRef<number | null>(null);
@@ -27,7 +27,8 @@ export default function Player({ url, title, subtitle, poster, isLive, onClose }
 
     setStatus("loading");
     setError(null);
-    const src = useProxy ? proxied(url) : url;
+    // Always go through proxy for streams to bypass HTTPS→HTTP mixed content
+    const src = proxied(url);
     const isHls = /\.m3u8(\?|$)/i.test(url) || isLive;
 
     // cleanup prior hls
@@ -142,13 +143,7 @@ export default function Player({ url, title, subtitle, poster, isLive, onClose }
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/85 p-6 text-center text-white">
             <div className="text-4xl">⚠️</div>
             <p className="max-w-md text-white/80">{error}</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button
-                onClick={() => setUseProxy((u) => !u)}
-                className="rounded-md bg-white/15 px-4 py-2 text-sm font-semibold hover:bg-white/25"
-              >
-                {useProxy ? "Desativar proxy" : "Tentar via proxy CORS"}
-              </button>
+              <div className="flex flex-wrap justify-center gap-2">
               <button
                 onClick={onClose}
                 className="rounded-md bg-[#e50914] px-4 py-2 text-sm font-semibold hover:bg-[#f6121d]"

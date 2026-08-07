@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  proxied,
   clearCreds,
   episodeUrl,
   getLiveCategories,
@@ -372,7 +373,7 @@ function LiveSection({ creds, query }: { creds: XtreamCreds; query: string }) {
 
       {playing && (
         <Player
-          url={liveUrl(creds, playing.stream_id, "m3u8")}
+          url={proxied(liveUrl(creds, playing.stream_id, "m3u8"))}
           title={playing.name}
           subtitle="AO VIVO"
           poster={playing.stream_icon}
@@ -488,7 +489,7 @@ function MoviesSection({ creds, query }: { creds: XtreamCreds; query: string }) 
 
       {playing && (
         <Player
-          url={vodUrl(creds, playing.stream_id, playing.container_extension || "mp4")}
+          url={proxied(vodUrl(creds, playing.stream_id, playing.container_extension || "mp4"))}
           title={playing.name}
           subtitle="Filme"
           poster={playing.stream_icon}
